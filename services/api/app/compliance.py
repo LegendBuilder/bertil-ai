@@ -8,7 +8,7 @@ from typing import Iterable
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Verification, ComplianceFlag
+from .models import Verification, ComplianceFlag, Entry
 
 
 @dataclass
@@ -99,6 +99,49 @@ async def rule_R031(_session: AsyncSession, v: Verification) -> list[RuleFlag]:
     return []
 
 
+async def rule_DUP(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    # Duplicate detector: same document_link used in another verification
+    if not v.document_link:
+        return []
+    stmt = (
+        select(Verification)
+        .where(Verification.document_link == v.document_link)
+        .where(Verification.id != v.id)
+        .limit(1)
+    )
+    other = (await session.execute(stmt)).scalars().first()
+    if other:
+        return [
+            RuleFlag(
+                rule_code="R-DUP",
+                severity="warning",
+                message="Dubblett: underlag används redan i annan verifikation.",
+            )
+        ]
+    return []
+
+
+async def rule_RVAT(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    # VAT plausibility vs total amount using entries on 264x
+    estmt = select(Entry).where(Entry.verification_id == v.id)
+    entries = (await session.execute(estmt)).scalars().all()
+    vat = sum(float(e.debit or 0.0) for e in entries if e.account.startswith("264"))
+    total = float(v.total_amount or 0.0)
+    if total <= 0 or vat <= 0:
+        return []
+    ratio = vat / total
+    expected = [0.25 / 1.25, 0.12 / 1.12, 0.06 / 1.06]
+    if not any(abs(ratio - r) < 0.03 for r in expected):
+        return [
+            RuleFlag(
+                rule_code="R-VAT",
+                severity="warning",
+                message="Orimlig moms i relation till totalbelopp.",
+            )
+        ]
+    return []
+
+
 async def rule_R051(session: AsyncSession, year: int) -> list[RuleFlag]:
     stmt = select(func.count(Verification.id)).where(func.extract("year", Verification.date) == year)
     cnt = int((await session.execute(stmt)).scalar_one() or 0)
@@ -116,6 +159,8 @@ async def run_yearly_compliance(session: AsyncSession, year: int) -> list[RuleFl
         flags.extend(await rule_R011(session, v))
         flags.extend(await rule_R021(session, v))
         flags.extend(await rule_R031(session, v))
+        flags.extend(await rule_DUP(session, v))
+        flags.extend(await rule_RVAT(session, v))
     flags.extend(await rule_R051(session, year))
     return flags
 
@@ -136,6 +181,8 @@ async def run_verification_rules(session: AsyncSession, v: Verification) -> list
     flags.extend(await rule_R011(session, v))
     flags.extend(await rule_R021(session, v))
     flags.extend(await rule_R031(session, v))
+    flags.extend(await rule_DUP(session, v))
+    flags.extend(await rule_RVAT(session, v))
     return flags
 
 
