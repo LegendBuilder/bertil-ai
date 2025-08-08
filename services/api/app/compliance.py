@@ -8,7 +8,7 @@ from typing import Iterable
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Verification, ComplianceFlag, Entry
+from .models import Verification, ComplianceFlag, Entry, FiscalYear
 
 
 @dataclass
@@ -72,15 +72,36 @@ async def rule_R021(_session: AsyncSession, v: Verification) -> list[RuleFlag]:
                 message="Arkiveringslänk saknas; WORM-arkivering kan ej verifieras.",
             )
         ]
-    p = Path(v.document_link)
-    if not p.exists():
-        return [
-            RuleFlag(
-                rule_code="R-021",
-                severity="error",
-                message="Underlag hittas ej i WORM-lagring.",
-            )
-        ]
+    # Support app-style link "/documents/{id}" or filesystem path
+    link = v.document_link
+    if link.startswith("/documents/"):
+        digest = link.split("/documents/")[-1]
+        # locate file in .worm_store similar to ingest layout
+        store_dir = Path(".worm_store") / digest[:2] / digest[2:4]
+        found = False
+        if store_dir.exists():
+            for p in store_dir.iterdir():
+                if p.is_file() and p.name.startswith(f"{digest}_"):
+                    found = True
+                    break
+        if not found:
+            return [
+                RuleFlag(
+                    rule_code="R-021",
+                    severity="error",
+                    message="Underlag hittas ej i WORM-lagring.",
+                )
+            ]
+    else:
+        p = Path(link)
+        if not p.exists():
+            return [
+                RuleFlag(
+                    rule_code="R-021",
+                    severity="error",
+                    message="Underlag hittas ej i WORM-lagring.",
+                )
+            ]
     return []
 
 
@@ -161,6 +182,7 @@ async def run_yearly_compliance(session: AsyncSession, year: int) -> list[RuleFl
         flags.extend(await rule_R031(session, v))
         flags.extend(await rule_DUP(session, v))
         flags.extend(await rule_RVAT(session, v))
+        flags.extend(await rule_PERIOD(session, v))
     flags.extend(await rule_R051(session, year))
     return flags
 
@@ -183,7 +205,29 @@ async def run_verification_rules(session: AsyncSession, v: Verification) -> list
     flags.extend(await rule_R031(session, v))
     flags.extend(await rule_DUP(session, v))
     flags.extend(await rule_RVAT(session, v))
+    flags.extend(await rule_PERIOD(session, v))
     return flags
+
+
+async def rule_PERIOD(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    # Warn if verification date is outside any known fiscal year for org
+    if not isinstance(v.date, date):
+        return []
+    stmt = select(FiscalYear).where(
+        FiscalYear.org_id == v.org_id,
+        FiscalYear.start_date <= v.date,
+        FiscalYear.end_date >= v.date,
+    )
+    fy = (await session.execute(stmt)).scalars().first()
+    if fy is None:
+        return [
+            RuleFlag(
+                rule_code="R-PERIOD",
+                severity="warning",
+                message="Datum ligger utanför känd bokföringsperiod.",
+            )
+        ]
+    return []
 
 
 async def persist_flags(session: AsyncSession, entity_type: str, entity_id: int, flags: Iterable[RuleFlag]) -> None:
