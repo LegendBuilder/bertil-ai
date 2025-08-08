@@ -46,17 +46,20 @@ class DashboardPage extends ConsumerWidget {
               );
             }),
             const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.flash_on_outlined, color: Colors.blue),
-                title: const Text('Nästa åtgärd'),
-                subtitle: const Text('Fota ditt första kvitto – tar 20 sekunder'),
-                trailing: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pushNamed('/capture'),
-                  child: const Text('Öppna kamera'),
+            Consumer(builder: (context, ref, _) {
+              final next = ref.watch(nextActionProvider);
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.flash_on_outlined, color: Colors.blue),
+                  title: Text(next.title),
+                  subtitle: Text(next.subtitle),
+                  trailing: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pushNamed(next.route),
+                    child: Text(next.ctaLabel),
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
             const SizedBox(height: 16),
             Text('Tidslinje', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),

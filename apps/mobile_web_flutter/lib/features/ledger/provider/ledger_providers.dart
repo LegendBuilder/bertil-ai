@@ -1,12 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/ledger_api.dart';
+import '../../documents/provider/document_list_providers.dart';
+import '../domain/next_action.dart';
 
 final trustSummaryProvider = FutureProvider<TrustSummary>((ref) async {
   final api = ref.watch(ledgerApiProvider);
   final now = DateTime.now();
   final year = now.year;
   return api.getComplianceSummary(year);
+});
+
+final nextActionProvider = Provider<NextAction>((ref) {
+  final recentDocs = ref.watch(recentDocumentsProvider);
+  if (recentDocs.isEmpty) {
+    return NextAction(
+      title: 'Fota ditt första kvitto',
+      subtitle: 'Det tar 20 sekunder – vi sköter resten',
+      route: '/capture',
+      ctaLabel: 'Öppna kamera',
+    );
+  }
+  return NextAction(
+    title: 'Granska senaste dokument',
+    subtitle: 'Säkerställ att allt ser rätt ut',
+    route: '/documents/${recentDocs.first.id}',
+    ctaLabel: 'Öppna',
+  );
 });
 
 

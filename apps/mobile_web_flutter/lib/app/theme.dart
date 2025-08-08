@@ -10,6 +10,14 @@ ThemeData buildTheme() {
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     appBarTheme: const AppBarTheme(centerTitle: true),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(minimumSize: const Size(44, 44)),
+    ),
+    listTileTheme: const ListTileThemeData(
+      dense: false,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ),
   );
 }
 
