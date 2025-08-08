@@ -61,3 +61,24 @@ def test_unbalanced_verification_rejected() -> None:
         assert "balance" in r.json()["detail"]
 
 
+def test_reverse_and_correct_date() -> None:
+    with TestClient(app) as client:
+        payload = {
+            "org_id": 1,
+            "date": "2025-05-10",
+            "total_amount": 200.0,
+            "currency": "SEK",
+            "entries": [
+                {"account": "1910", "debit": 200.0, "credit": 0.0},
+                {"account": "4000", "debit": 0.0, "credit": 200.0},
+            ],
+        }
+        r = client.post("/verifications", json=payload)
+        assert r.status_code == 200
+        ver_id = r.json()["id"]
+        r_rev = client.post(f"/verifications/{ver_id}/reverse")
+        assert r_rev.status_code == 200
+        r_fix = client.post(f"/verifications/{ver_id}/correct-date", json={"new_date": "2025-05-11"})
+        assert r_fix.status_code == 200
+
+

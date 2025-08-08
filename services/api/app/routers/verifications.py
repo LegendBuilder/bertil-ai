@@ -186,3 +186,60 @@ async def get_verification_by_document(doc_id: str, session: AsyncSession = Depe
     return {"id": v.id, "immutable_seq": v.immutable_seq}
 
 
+def _reverse_entry(e: Entry) -> EntryIn:
+    debit = float(e.debit or 0.0)
+    credit = float(e.credit or 0.0)
+    return EntryIn(account=e.account, debit=credit, credit=debit, dimension=e.dimension)
+
+
+@router.post("/{ver_id}/reverse")
+async def reverse_verification(ver_id: int, session: AsyncSession = Depends(get_session)) -> dict:
+    v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Not found")
+    entries = (await session.execute(select(Entry).where(Entry.verification_id == v.id).order_by(Entry.id))).scalars().all()
+    reversed_entries = [_reverse_entry(e) for e in entries]
+    # Create reversing verification on same date
+    vin = VerificationIn(
+        org_id=v.org_id,
+        fiscal_year_id=v.fiscal_year_id,
+        date=v.date,
+        total_amount=float(v.total_amount),
+        currency=v.currency,
+        vat_amount=float(v.vat_amount or 0.0) if v.vat_amount is not None else None,
+        counterparty=v.counterparty,
+        document_link=v.document_link,
+        entries=reversed_entries,
+    )
+    created = await create_verification(vin, session)
+    return created
+
+
+class CorrectionDateIn(BaseModel):
+    new_date: date
+
+
+@router.post("/{ver_id}/correct-date")
+async def correct_verification_date(ver_id: int, body: CorrectionDateIn, session: AsyncSession = Depends(get_session)) -> dict:
+    v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Not found")
+    entries = (await session.execute(select(Entry).where(Entry.verification_id == v.id).order_by(Entry.id))).scalars().all()
+    # First create reversal
+    reversed_created = await reverse_verification(ver_id, session)
+    # Then create new with desired date and original entry directions
+    vin = VerificationIn(
+        org_id=v.org_id,
+        fiscal_year_id=v.fiscal_year_id,
+        date=body.new_date,
+        total_amount=float(v.total_amount),
+        currency=v.currency,
+        vat_amount=float(v.vat_amount or 0.0) if v.vat_amount is not None else None,
+        counterparty=v.counterparty,
+        document_link=v.document_link,
+        entries=[EntryIn(account=e.account, debit=float(e.debit or 0.0), credit=float(e.credit or 0.0), dimension=e.dimension) for e in entries],
+    )
+    corrected_created = await create_verification(vin, session)
+    return {"reversal": reversed_created, "corrected": corrected_created}
+
+

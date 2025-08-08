@@ -76,6 +76,11 @@ class LedgerApi {
     return (res.data['flags'] as List).cast<Map<String, dynamic>>();
   }
 
+  Future<Map<String, dynamic>> correctVerificationDate({required int id, required String newDateIso}) async {
+    final res = await _dio.post('/verifications/$id/correct-date', data: {'new_date': newDateIso});
+    return res.data as Map<String, dynamic>;
+  }
+
   Future<int> createVerification({
     required int orgId,
     required String dateIso,

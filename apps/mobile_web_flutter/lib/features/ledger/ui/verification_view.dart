@@ -106,6 +106,20 @@ class _VerificationDetailPage extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        if (flags.any((f) => (f['rule_code'] ?? '').toString().startsWith('R-PERIOD')))
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final today = DateTime.now();
+                              final iso = '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}'
+                                  ;
+                              await api.correctVerificationDate(id: id, newDateIso: iso);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datum korrigerat via ombokning')));
+                              }
+                            },
+                            icon: const Icon(Icons.event_available_outlined),
+                            label: const Text('Åtgärda: korrigera datum'),
+                          ),
                         if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
                           OutlinedButton.icon(
                             onPressed: () {
