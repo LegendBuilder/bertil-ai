@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+.env.*
+.coverage
+htmlcov/
+
+# Flutter
+apps/mobile_web_flutter/.dart_tool/
+apps/mobile_web_flutter/.packages
+apps/mobile_web_flutter/.flutter-plugins*
+apps/mobile_web_flutter/build/
+apps/mobile_web_flutter/ios/Pods/
+apps/mobile_web_flutter/ios/.symlinks/
+apps/mobile_web_flutter/ios/Flutter/Flutter.framework
+apps/mobile_web_flutter/ios/Flutter/Flutter.podspec
+apps/mobile_web_flutter/android/.gradle/
+apps/mobile_web_flutter/android/app/debug/
+apps/mobile_web_flutter/android/app/profile/
+apps/mobile_web_flutter/android/app/release/
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/terraform.tfstate
+infra/terraform/terraform.tfstate.*
+
+# IDE
+.vscode/
+.idea/
+
+

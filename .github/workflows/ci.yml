@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r services/api/requirements.txt -r services/api/requirements-dev.txt
+      - name: Lint (ruff)
+        run: ruff --version && ruff check .
+      - name: Format check (black)
+        run: black --check services/api
+      - name: Tests (pytest + coverage)
+        run: pytest --cov=services/api --cov-report=xml --cov-fail-under=70
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Create Flutter app if missing
+        run: |
+          if [ ! -d "apps/mobile_web_flutter" ]; then
+            flutter create apps/mobile_web_flutter
+          fi
+      - name: Flutter test
+        working-directory: apps/mobile_web_flutter
+        run: |
+          flutter pub get
+          flutter test
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform fmt
+        working-directory: infra/terraform
+        run: terraform fmt -check
+      - name: Terraform validate
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+

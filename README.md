@@ -1,0 +1,56 @@
+Sveriges bästa digitala revisor – Monorepo
+
+Översikt
+
+Detta monorepo innehåller klient (Flutter) och backend (FastAPI) samt infrastruktur/IaC och dokumentation. Målet är snabbaste vägen från foto till bokförd verifikation under 20 sekunder, med svenska regelkrav (Bokföringslagen, BFN/Skatteverket, Bolagsverket, SIE).
+
+Struktur
+
+- apps/mobile_web_flutter – Flutter-klient (iOS/Android/Web)
+- services/api – FastAPI-baserad backend
+- services/ocr – OCR-adaptrar (stub i Pass 2)
+- services/ai – AI/regelmotor (stub i Pass 2)
+- infra/terraform – Terraform-stubbar (S3 Object Lock, RDS, OpenSearch, Secrets)
+- docs – Dokumentation (krav, arkitektur, säkerhet, tester, roadmap)
+
+Snabbstart (lokalt, Windows PowerShell)
+
+Backend (Python/FastAPI)
+
+1. Skapa och aktivera virtuell miljö (Python 3.11):
+   - py -3.11 -m venv .venv
+   - .\.venv\Scripts\Activate.ps1
+2. Installera beroenden:
+   - pip install -r services\api\requirements.txt -r services\api\requirements-dev.txt
+3. Kör tester:
+   - pytest -q
+4. Starta API (utveckling):
+   - uvicorn services.api.app.main:app --reload
+
+Flutter-klient
+
+1. (Första gången) Säkerställ att Flutter finns i PATH och kör:
+   - cd apps\mobile_web_flutter
+   - flutter pub get
+   - flutter test
+2. Kör appen (t.ex. web):
+   - flutter run -d chrome
+
+Miljövariabler
+
+Se .env.example för exempelvärden. Använd separata .env-filer per tjänst och miljö.
+
+CI/CD
+
+GitHub Actions kör lint och tester för backend och Flutter samt formatteringskontroll för Terraform. Branch-skydd och CODEOWNERS ingår.
+
+Jurisdiktion & lagring
+
+- SE/EU-regioner, S3 Object Lock (WORM) ≥ 7 år.
+- Append-only verifikationer och revisionskedja.
+
+Status (Pass 2)
+
+- Monorepo scaffoldat, CI-workflows skapade, Terraform-stubbar tillagda. Backend och Flutter har basala tester som ska passera.
+
+

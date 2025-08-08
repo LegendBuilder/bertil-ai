@@ -1,0 +1,118 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .db import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    personnummer_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    bankid_subject: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    mfa: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    orgnr: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    address: Mapped[Optional[str]] = mapped_column(String(300))
+    bas_chart_version: Mapped[Optional[str]] = mapped_column(String(20))
+
+
+class FiscalYear(Base):
+    __tablename__ = "fiscal_years"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
+    start_date: Mapped[datetime] = mapped_column(Date)
+    end_date: Mapped[datetime] = mapped_column(Date)
+    k2_k3: Mapped[Optional[str]] = mapped_column(String(10))
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"))
+    fiscal_year_id: Mapped[Optional[int]] = mapped_column(ForeignKey("fiscal_years.id"))
+    type: Mapped[str] = mapped_column(String(20))
+    storage_uri: Mapped[str] = mapped_column(String(500))
+    hash_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    ocr_text: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="new")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ExtractedField(Base):
+    __tablename__ = "extracted_fields"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), index=True)
+    key: Mapped[str] = mapped_column(String(50))
+    value: Mapped[str] = mapped_column(String(500))
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2))
+
+
+class Verification(Base):
+    __tablename__ = "verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    fiscal_year_id: Mapped[Optional[int]] = mapped_column(ForeignKey("fiscal_years.id"))
+    immutable_seq: Mapped[int] = mapped_column(BigInteger, index=True)
+    date: Mapped[datetime] = mapped_column(Date)
+    total_amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="SEK")
+    vat_amount: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    counterparty: Mapped[Optional[str]] = mapped_column(String(200))
+    document_link: Mapped[Optional[str]] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Entry(Base):
+    __tablename__ = "entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    verification_id: Mapped[int] = mapped_column(ForeignKey("verifications.id"), index=True)
+    account: Mapped[str] = mapped_column(String(10))
+    debit: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    credit: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    dimension: Mapped[Optional[str]] = mapped_column(String(50))
+
+
+class ComplianceFlag(Base):
+    __tablename__ = "compliance_flags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(String(30))
+    entity_id: Mapped[int] = mapped_column(Integer)
+    rule_code: Mapped[str] = mapped_column(String(10))
+    severity: Mapped[str] = mapped_column(String(10))
+    message: Mapped[str] = mapped_column(String(500))
+    resolved_by: Mapped[Optional[str]] = mapped_column(String(100))
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    actor: Mapped[str] = mapped_column(String(100))
+    action: Mapped[str] = mapped_column(String(50))
+    target: Mapped[str] = mapped_column(String(200))
+    before_hash: Mapped[Optional[str]] = mapped_column(String(64))
+    after_hash: Mapped[Optional[str]] = mapped_column(String(64))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    signature: Mapped[Optional[str]] = mapped_column(String(128))
+
+
