@@ -12,12 +12,26 @@ class OcrBox {
   final String label;
 }
 
+class ExtractedFieldData {
+  ExtractedFieldData({required this.key, required this.value, required this.confidence});
+  final String key;
+  final String value;
+  final double confidence;
+}
+
 class DocumentDetail {
-  DocumentDetail({required this.id, required this.ocrText, required this.boxes, required this.imageUrl});
+  DocumentDetail({
+    required this.id,
+    required this.ocrText,
+    required this.boxes,
+    required this.imageUrl,
+    required this.extractedFields,
+  });
   final String id;
   final String ocrText;
   final List<OcrBox> boxes;
   final String imageUrl;
+  final List<ExtractedFieldData> extractedFields;
 }
 
 class DocumentsApi {
@@ -39,11 +53,20 @@ class DocumentsApi {
               label: b['label'] as String,
             ))
         .toList();
+    final extracted = ((data['extracted_fields'] as List?) ?? [])
+        .cast<Map<String, dynamic>>()
+        .map((e) => ExtractedFieldData(
+              key: e['key'] as String,
+              value: e['value'] as String,
+              confidence: (e['confidence'] as num).toDouble(),
+            ))
+        .toList();
     return DocumentDetail(
       id: meta['id'] as String,
       ocrText: (ocr['text'] ?? '') as String,
       boxes: boxes,
       imageUrl: (meta['storageUrl'] ?? '') as String,
+      extractedFields: extracted,
     );
   }
 }

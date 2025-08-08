@@ -73,6 +73,19 @@ class DocumentDetailPage extends ConsumerWidget {
                         const Text('OCR-text:'),
                         const SizedBox(height: 8),
                         Text(doc.ocrText.isEmpty ? '(tom stub)' : doc.ocrText),
+                        const SizedBox(height: 16),
+                        const Text('Fält (AI)'),
+                        const SizedBox(height: 8),
+                        for (final f in doc.extractedFields)
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${f.key}: ${f.value}'),
+                            subtitle: LinearProgressIndicator(
+                              value: f.confidence.clamp(0.0, 1.0),
+                              minHeight: 6,
+                            ),
+                          ),
                         const Spacer(),
                         Row(
                           children: const [
