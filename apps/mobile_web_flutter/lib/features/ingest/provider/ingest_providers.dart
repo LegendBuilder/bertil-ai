@@ -37,6 +37,25 @@ class UploadController extends StateNotifier<UploadState> {
     try {
       final resp = await _api.uploadDocument(bytes: bytes, filename: filename, meta: withHash);
       final worm = resp.storagePath.isNotEmpty ? ' (WORM-lagrad)' : '';
+      // If not duplicate, run OCR then auto-post
+      if (!resp.duplicate) {
+        final ocr = await _api.processOcr(resp.documentId);
+        // derive fields
+        final fields = (ocr['fields'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+        String? dateIso;
+        String? vendor;
+        double? total;
+        for (final f in fields) {
+          final k = (f['key'] as String).toLowerCase();
+          final v = f['value'] as String;
+          if (k == 'date') dateIso = v;
+          if (k == 'vendor') vendor = v;
+          if (k == 'total') total = double.tryParse(v.replaceAll(',', '.'));
+        }
+        if (total != null && dateIso != null) {
+          await _api.autoPostFromExtracted(documentId: resp.documentId, total: total, dateIso: dateIso!, vendor: vendor);
+        }
+      }
       final msg = resp.duplicate
           ? 'Dubblett upptäckt – vi har redan detta kvitto$worm'
           : 'Uppladdat → Läser → Bokfört ✅$worm';

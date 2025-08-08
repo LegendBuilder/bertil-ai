@@ -31,13 +31,20 @@ class IngestApi {
     );
   }
 
+  Future<Map<String, dynamic>> processOcr(String documentId) async {
+    final res = await _dio.post('/documents/$documentId/process-ocr');
+    return res.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> autoPostFromExtracted({
+    required String documentId,
     required double total,
     required String dateIso,
     String? vendor,
   }) async {
     final res = await _dio.post('/ai/auto-post', data: {
       'org_id': 1,
+      'document_id': documentId,
       'total': total,
       'date': dateIso,
       if (vendor != null) 'vendor': vendor,

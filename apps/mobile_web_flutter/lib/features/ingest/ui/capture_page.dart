@@ -1,8 +1,10 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 
 import '../provider/ingest_providers.dart';
 import '../../../shared/services/queue/queue_service.dart';
@@ -18,7 +20,35 @@ class CapturePage extends ConsumerWidget {
       final picker = ImagePicker();
       final picked = await picker.pickImage(source: source, imageQuality: 85);
       if (picked == null) return;
-      final bytes = await picked.readAsBytes();
+      var bytes = await picked.readAsBytes();
+      // Simple auto-crop heuristic: center-crop to 4:5 if portrait-ish, else keep
+      try {
+        final decoded = img.decodeImage(bytes);
+        if (decoded != null && decoded.width > 0 && decoded.height > 0) {
+          final w = decoded.width;
+          final h = decoded.height;
+          // glare warning heuristic: high mean brightness
+          final meanLuma = _estimateLuma(decoded);
+          if (meanLuma > 230) {
+            // ignore: use_build_context_synchronously
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Blänk upptäckt – vinkla kvittot och försök igen')));
+          }
+          final targetRatio = 4 / 5;
+          final currentRatio = w / h;
+          if ((currentRatio - targetRatio).abs() > 0.05) {
+            int newW = w;
+            int newH = (w / targetRatio).round();
+            if (newH > h) {
+              newH = h;
+              newW = (h * targetRatio).round();
+            }
+            final x = (w - newW) ~/ 2;
+            final y = (h - newH) ~/ 2;
+            final cropped = img.copyCrop(decoded, x: x, y: y, width: newW, height: newH);
+            bytes = Uint8List.fromList(img.encodeJpg(cropped, quality: 90));
+          }
+        }
+      } catch (_) {}
       await ctrl.uploadBytes(bytes as Uint8List, picked.name, meta: {
         'org_id': 1,
         'type': 'receipt',
@@ -86,6 +116,27 @@ class CapturePage extends ConsumerWidget {
       ),
     );
   }
+}
+
+double _estimateLuma(img.Image im) {
+  // sample a grid of pixels
+  final stepX = (im.width / 20).clamp(1, im.width).toInt();
+  final stepY = (im.height / 20).clamp(1, im.height).toInt();
+  int samples = 0;
+  double sum = 0;
+  for (int y = 0; y < im.height; y += stepY) {
+    for (int x = 0; x < im.width; x += stepX) {
+      final c = im.getPixel(x, y);
+      final r = img.getRed(c);
+      final g = img.getGreen(c);
+      final b = img.getBlue(c);
+      // Rec. 601 luma
+      final luma = 0.299 * r + 0.587 * g + 0.114 * b;
+      sum += luma;
+      samples++;
+    }
+  }
+  return samples == 0 ? 0 : (sum / samples);
 }
 
 
