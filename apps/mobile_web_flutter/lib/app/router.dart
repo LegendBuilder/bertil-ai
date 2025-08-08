@@ -11,6 +11,7 @@ import 'app_shell.dart';
 import '../features/auth/ui/login_page.dart';
 import '../features/auth/provider/auth_providers.dart';
 import '../features/documents/ui/document_detail_page.dart';
+import '../features/ingest/ui/upload_queue_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -32,6 +33,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/', builder: (context, state) => const DashboardPage()),
           GoRoute(path: '/capture', builder: (context, state) => const CapturePage()),
+          GoRoute(path: '/upload-queue', builder: (context, state) => const UploadQueuePage()),
           GoRoute(path: '/documents', builder: (context, state) => const DocumentsPage()),
           GoRoute(
             path: '/documents/:id',
