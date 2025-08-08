@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+// ignore: unused_import
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -16,18 +17,14 @@ class CapturePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final upload = ref.watch(uploadControllerProvider);
     final ctrl = ref.read(uploadControllerProvider.notifier);
-    Future<void> pickAndUpload(ImageSource source) async {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: source, imageQuality: 85);
-      if (picked == null) return;
-      var bytes = await picked.readAsBytes();
-      // Simple auto-crop heuristic: center-crop to 4:5 if portrait-ish, else keep
+
+    Future<void> _processAndUpload(Uint8List bytes, String filename) async {
+      var processed = bytes;
       try {
-        final decoded = img.decodeImage(bytes);
+        final decoded = img.decodeImage(processed);
         if (decoded != null && decoded.width > 0 && decoded.height > 0) {
           final w = decoded.width;
           final h = decoded.height;
-          // glare warning heuristic: high mean brightness
           final meanLuma = _estimateLuma(decoded);
           if (meanLuma > 230) {
             // ignore: use_build_context_synchronously
@@ -45,11 +42,12 @@ class CapturePage extends ConsumerWidget {
             final x = (w - newW) ~/ 2;
             final y = (h - newH) ~/ 2;
             final cropped = img.copyCrop(decoded, x: x, y: y, width: newW, height: newH);
-            bytes = Uint8List.fromList(img.encodeJpg(cropped, quality: 90));
+            processed = Uint8List.fromList(img.encodeJpg(cropped, quality: 90));
           }
         }
       } catch (_) {}
-      await ctrl.uploadBytes(bytes as Uint8List, picked.name, meta: {
+
+      await ctrl.uploadBytes(processed, filename, meta: {
         'org_id': 1,
         'type': 'receipt',
         'captured_at': DateTime.now().toIso8601String(),
@@ -66,6 +64,24 @@ class CapturePage extends ConsumerWidget {
           // ignore: use_build_context_synchronously
           Navigator.of(context).pushNamed('/documents/${state.lastDocumentId}');
         }
+      }
+    }
+
+    Future<void> pickAndUpload(ImageSource source) async {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: source, imageQuality: 85);
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      await _processAndUpload(bytes as Uint8List, picked.name);
+    }
+
+    Future<void> pickBatch() async {
+      final picker = ImagePicker();
+      final picked = await picker.pickMultiImage(imageQuality: 85);
+      if (picked.isEmpty) return;
+      for (final p in picked) {
+        final bytes = await p.readAsBytes();
+        await _processAndUpload(bytes as Uint8List, p.name);
       }
     }
 
@@ -97,6 +113,29 @@ class CapturePage extends ConsumerWidget {
                 ),
               );
             }),
+            // Live overlay guides (static preview area)
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  height: 220,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                CustomPaint(
+                  size: const Size(double.infinity, 200),
+                  painter: _OverlayGuidesPainter(),
+                ),
+                const Positioned(
+                  bottom: 8,
+                  child: Text('Lägg kvittot inom ramen'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.camera),
               icon: const Icon(Icons.camera_alt_outlined),
@@ -107,6 +146,12 @@ class CapturePage extends ConsumerWidget {
               onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.gallery),
               icon: const Icon(Icons.upload_file),
               label: const Text('Välj bild från galleri', semanticsLabel: 'Välj bild'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: upload.isUploading ? null : pickBatch,
+              icon: const Icon(Icons.collections_outlined),
+              label: const Text('Batch: välj flera'),
             ),
             const SizedBox(height: 24),
             if (upload.isUploading) const LinearProgressIndicator(),
