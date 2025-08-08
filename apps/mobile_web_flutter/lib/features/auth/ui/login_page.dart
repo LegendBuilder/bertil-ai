@@ -23,12 +23,12 @@ class LoginPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Logga in med BankID för att komma igång.'),
+            const Text('Logga in med BankID för att komma igång.', semanticsLabel: 'Logga in med BankID'),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: state.isLoading ? null : () => ctrl.startBankId(),
               icon: const Icon(Icons.login),
-              label: const Text('Starta BankID'),
+              label: const Text('Starta BankID', semanticsLabel: 'Starta BankID'),
             ),
             const SizedBox(height: 16),
             if (state.message != null) Text(state.message!),

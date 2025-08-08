@@ -40,7 +40,7 @@ class CapturePage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Fota')),
+      appBar: AppBar(title: const Text('Fota', semanticsLabel: 'Fota kvitto')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -70,13 +70,13 @@ class CapturePage extends ConsumerWidget {
             ElevatedButton.icon(
               onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.camera),
               icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Fota kvitto'),
+              label: const Text('Fota kvitto', semanticsLabel: 'Öppna kamera'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.gallery),
               icon: const Icon(Icons.upload_file),
-              label: const Text('Välj bild från galleri'),
+              label: const Text('Välj bild från galleri', semanticsLabel: 'Välj bild'),
             ),
             const SizedBox(height: 24),
             if (upload.isUploading) const LinearProgressIndicator(),

@@ -30,7 +30,11 @@ class AppShell extends StatelessWidget {
         onDestinationSelected: (idx) => context.go(_tabs[idx].route),
         destinations: [
           for (final t in _tabs)
-            NavigationDestination(icon: Icon(t.icon), label: t.label),
+            NavigationDestination(
+              icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
+              label: t.label,
+              tooltip: t.label,
+            ),
         ],
       ),
     );

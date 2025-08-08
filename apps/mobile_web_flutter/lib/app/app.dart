@@ -14,6 +14,13 @@ class BertilApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       routerConfig: router,
+      builder: (context, child) {
+        return Semantics(
+          label: 'Bertil huvudapp',
+          explicitChildNodes: true,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

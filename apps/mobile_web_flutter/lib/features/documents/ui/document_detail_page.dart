@@ -25,8 +25,15 @@ class DocumentDetailPage extends ConsumerWidget {
                   flex: 3,
                   child: Stack(
                     children: [
-                      Positioned.fill(
-                        child: Image.network(doc.imageUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas'))),
+                      Semantics(
+                        label: 'Dokumentbild',
+                        child: Positioned.fill(
+                          child: Image.network(
+                            doc.imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas')),
+                          ),
+                        ),
                       ),
                       ...doc.boxes.map((b) {
                         return Positioned(
