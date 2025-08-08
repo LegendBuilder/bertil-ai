@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import engine, Base
-from .routers import auth, ingest, verifications, compliance, exports, reports
+from .routers import auth, ingest, verifications, compliance, exports, reports, ai_auto
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(compliance.router)
     app.include_router(exports.router)
     app.include_router(reports.router)
+    app.include_router(ai_auto.router)
 
     @app.on_event("startup")
     async def on_startup() -> None:

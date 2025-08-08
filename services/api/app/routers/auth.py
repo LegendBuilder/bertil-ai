@@ -13,9 +13,13 @@ async def bankid_init() -> dict:
 
 @router.get("/status")
 async def bankid_status(orderRef: str) -> dict:
-    # Simple rotating stub: pretend completed if orderRef endswith 'ok'
+    # Simple stub: completed when orderRef endswith 'ok'
     status = "complete" if orderRef.endswith("ok") else "pending"
-    user = {"name": "Test Användare", "personnummer": "***-****"} if status == "complete" else None
+    user = (
+        {"subject": "SE-TEST-USER-123", "name": "Anna Andersson", "pnr_masked": "YYYYMMDD-XXXX"}
+        if status == "complete"
+        else None
+    )
     return {"status": status, "user": user}
 
 

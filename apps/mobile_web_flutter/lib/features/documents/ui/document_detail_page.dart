@@ -5,6 +5,7 @@ import '../provider/document_providers.dart';
 import '../provider/document_list_providers.dart';
 import '../domain/document.dart';
 import '../provider/explainability_provider.dart';
+import '../../ingest/data/ingest_api.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -104,6 +105,32 @@ class DocumentDetailPage extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som "Väntar info"')));
                             },
                             child: const Text('Vet inte'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // auto-post stub using extracted fields
+                              final vendor = doc.extractedFields.firstWhere(
+                                (f) => f.key.toLowerCase() == 'vendor',
+                                orElse: () => doc.extractedFields.first,
+                              ).value;
+                              final totalStr = doc.extractedFields.firstWhere(
+                                (f) => f.key.toLowerCase() == 'total',
+                                orElse: () => doc.extractedFields.first,
+                              ).value;
+                              final total = double.tryParse(totalStr.replaceAll(',', '.')) ?? 0.0;
+                              final dateIso = doc.extractedFields.firstWhere(
+                                (f) => f.key.toLowerCase() == 'date',
+                                orElse: () => doc.extractedFields.first,
+                              ).value;
+                              final api = IngestApi(NetworkService().client);
+                              final res = await api.autoPostFromExtracted(total: total, dateIso: dateIso, vendor: vendor);
+                              // On success, mark doc as done
+                              // ignore: use_build_context_synchronously
+                              ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);
+                              // ignore: use_build_context_synchronously
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bokfört ✅ (V#${res['id']})')));
+                            },
+                            child: const Text('Bokför automatiskt'),
                           ),
                           ElevatedButton(
                             onPressed: () {

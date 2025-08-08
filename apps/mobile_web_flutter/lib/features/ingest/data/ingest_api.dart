@@ -30,6 +30,20 @@ class IngestApi {
       duplicate: (data['duplicate'] ?? false) as bool,
     );
   }
+
+  Future<Map<String, dynamic>> autoPostFromExtracted({
+    required double total,
+    required String dateIso,
+    String? vendor,
+  }) async {
+    final res = await _dio.post('/ai/auto-post', data: {
+      'org_id': 1,
+      'total': total,
+      'date': dateIso,
+      if (vendor != null) 'vendor': vendor,
+    });
+    return res.data as Map<String, dynamic>;
+  }
 }
 
 final ingestApiProvider = Provider<IngestApi>((ref) => IngestApi(NetworkService().client));

@@ -69,24 +69,28 @@ async def upload_document(
     duplicate = dest.exists()
     if not duplicate:
         await file.seek(0)
+        content_bytes = b""
         with dest.open("wb") as f:
             while True:
                 chunk = await file.read(1024 * 1024)
                 if not chunk:
                     break
                 f.write(chunk)
+                content_bytes += chunk
+        # Write simple OCR sidecar stub (length)
+        (store_dir / f"{digest}.txt").write_text(f"len:{len(content_bytes)}")
     # Return pseudo-id = hash and duplicate flag
     return {"documentId": digest, "storagePath": str(dest), "duplicate": duplicate}
 
 
 @router.get("/{doc_id}")
 async def get_document(doc_id: str) -> dict:
-    # Stub OCR/extraction/compliance in Pass 5
     storage_url = f"/documents/{doc_id}/image"
+    # Deterministic stub values
     return {
         "meta": {"id": doc_id, "storageUrl": storage_url},
         "ocr": {
-            "text": "stub",
+            "text": "stub-ocr",
             "boxes": [
                 {"x": 0.1, "y": 0.1, "w": 0.3, "h": 0.08, "label": "Datum"},
                 {"x": 0.1, "y": 0.22, "w": 0.5, "h": 0.1, "label": "Leverantör"},

@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./bertil_local.db"
     cors_allow_origins: str = "*"
     otlp_endpoint: str | None = None
+    jwt_secret: str = "dev-secret"
+    jwt_issuer: str = "bertil-api"
 
     class Config:
         env_prefix = ""
