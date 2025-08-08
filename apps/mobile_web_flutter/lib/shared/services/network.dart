@@ -22,6 +22,10 @@ class NetworkService {
   )..interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         options.headers['Accept'] = 'application/json';
+        final token = _authToken;
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
         return handler.next(options);
       },
       onError: (e, handler) async {
@@ -47,6 +51,10 @@ class NetworkService {
     ));
 
   Dio get client => _dio;
+  static String? _authToken;
+  static void setAuthToken(String? token) {
+    _authToken = token;
+  }
 
   bool _isRetriable(DioException e) {
     if (e.type == DioExceptionType.connectionError || e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.sendTimeout) {

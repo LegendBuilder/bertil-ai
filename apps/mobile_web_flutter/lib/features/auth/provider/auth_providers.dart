@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/bankid_api.dart';
+import '../../../shared/services/network.dart';
 
 class AuthState {
   const AuthState({this.isLoading = false, this.isAuthenticated = false, this.message, this.user});
@@ -40,6 +41,9 @@ class AuthController extends StateNotifier<AuthState> {
       final s = await _api.status(init.orderRef);
       if (s.status == 'complete') {
         t.cancel();
+        // Accept optional token if backend provides it
+        final token = (s as dynamic).token as String?; // ignore: avoid_dynamic_calls
+        NetworkService.setAuthToken(token);
         state = state.copyWith(isLoading: false, isAuthenticated: true, message: 'Inloggad', user: s.user);
       } else {
         state = state.copyWith(isLoading: true, message: 'Väntar på BankID...');
