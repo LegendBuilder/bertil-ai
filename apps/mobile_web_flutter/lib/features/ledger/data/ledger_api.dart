@@ -86,6 +86,11 @@ class LedgerApi {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> correctVerificationDocument({required int id, required String documentId}) async {
+    final res = await _dio.post('/verifications/$id/correct-document', data: {'document_id': documentId});
+    return res.data as Map<String, dynamic>;
+  }
+
   Future<int> createVerification({
     required int orgId,
     required String dateIso,

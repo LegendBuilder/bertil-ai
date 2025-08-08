@@ -120,15 +120,43 @@ class _VerificationDetailPage extends ConsumerWidget {
                             icon: const Icon(Icons.event_available_outlined),
                             label: const Text('Åtgärda: korrigera datum'),
                           ),
-                        if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              final docId = v.documentLink!.split('/documents/').last;
-                              Navigator.of(context).pushNamed('/documents/$docId');
-                            },
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('Åtgärda: öppna underlag'),
-                          ),
+                        Row(children: [
+                          if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                final docId = v.documentLink!.split('/documents/').last;
+                                Navigator.of(context).pushNamed('/documents/$docId');
+                              },
+                              icon: const Icon(Icons.open_in_new),
+                              label: const Text('Åtgärda: öppna underlag'),
+                            )
+                          else
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                // Quick prompt for document id (basic UX for MVP)
+                                final controller = TextEditingController();
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Ange dokument-ID'),
+                                    content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'klistra in dokument-ID')),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Avbryt')),
+                                      ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Koppla')),
+                                    ],
+                                  ),
+                                );
+                                if (ok == true && controller.text.trim().isNotEmpty) {
+                                  await api.correctVerificationDocument(id: id, documentId: controller.text.trim());
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Underlag kopplat via ombokning')));
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.link_outlined),
+                              label: const Text('Koppla underlag'),
+                            ),
+                        ]),
                       ],
                     );
                   },
