@@ -142,6 +142,17 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
         .limit(1)
     )
     audit_hash = (await session.execute(at_stmt)).scalar_one_or_none()
+    # Try load explainability sidecar if exists
+    explainability: Optional[str] = None
+    try:
+        from pathlib import Path
+        import json
+        meta_path = Path(".verification_meta") / f"{v.id}.json"
+        if meta_path.exists():
+            explainability = (json.loads(meta_path.read_text(encoding="utf-8")).get("explainability") or None)
+    except Exception:
+        explainability = None
+
     return {
         "id": v.id,
         "org_id": v.org_id,
@@ -160,8 +171,7 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
             for e in entries
         ],
         "audit_hash": audit_hash,
-        # Backward-compatible: explainability not stored yet; can be joined from AI pipeline later
-        "explainability": None,
+        "explainability": explainability,
     }
 
 

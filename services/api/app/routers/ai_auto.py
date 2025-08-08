@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -38,9 +40,14 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
     )
     # Delegate to existing create_verification route
     created = await create_verification(vin, session)
-    return {
-        **created,
-        "explainability": f"{decision.reason}. Total {total:.2f} SEK, konto {decision.expense_account}, moms {int(decision.vat_rate*100)}%",
-    }
+    explain = f"{decision.reason}. Total {total:.2f} SEK, konto {decision.expense_account}, moms {int(decision.vat_rate*100)}%"
+    # Persist explainability in a local sidecar to allow retrieval later
+    try:
+        meta_dir = Path(".verification_meta")
+        meta_dir.mkdir(parents=True, exist_ok=True)
+        (meta_dir / f"{created['id']}.json").write_text(json.dumps({"explainability": explain}, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return {**created, "explainability": explain}
 
 
