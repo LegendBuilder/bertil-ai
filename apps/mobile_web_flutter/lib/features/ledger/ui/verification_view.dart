@@ -71,6 +71,12 @@ class _VerificationDetailPage extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
+                if (v.explainability != null && v.explainability!.isNotEmpty) ...[
+                  const Text('Varför valde vi detta?', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text(v.explainability!),
+                  const SizedBox(height: 12),
+                ],
                 const Text('Poster:'),
                 const SizedBox(height: 8),
                 Expanded(

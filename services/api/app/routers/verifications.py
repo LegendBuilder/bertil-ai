@@ -160,6 +160,8 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
             for e in entries
         ],
         "audit_hash": audit_hash,
+        # Backward-compatible: explainability not stored yet; can be joined from AI pipeline later
+        "explainability": None,
     }
 
 

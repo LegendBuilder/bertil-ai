@@ -19,7 +19,7 @@ class VerificationSummary {
 }
 
 class VerificationDetail {
-  VerificationDetail({required this.id, required this.immutableSeq, required this.date, required this.totalAmount, required this.currency, required this.entries, required this.auditHash});
+  VerificationDetail({required this.id, required this.immutableSeq, required this.date, required this.totalAmount, required this.currency, required this.entries, required this.auditHash, this.explainability});
   final int id;
   final int immutableSeq;
   final String date;
@@ -27,6 +27,7 @@ class VerificationDetail {
   final String currency;
   final List<Map<String, dynamic>> entries;
   final String auditHash;
+  final String? explainability;
 }
 
 class LedgerApi {
@@ -64,6 +65,7 @@ class LedgerApi {
       currency: data['currency'] as String,
       entries: (data['entries'] as List).cast<Map<String, dynamic>>(),
       auditHash: (data['audit_hash'] ?? '') as String,
+      explainability: (data['explainability'] as String?),
     );
   }
 
