@@ -35,17 +35,25 @@ async def export_verifications_pdf(year: int, session: AsyncSession = Depends(ge
     y = height - 40
     c.setFont("Helvetica-Bold", 14)
     c.drawString(40, y, f"Verifikationslista {year}")
-    y -= 20
+    y -= 26
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(40, y, "Ver\tDatum\tMotpart\tBelopp")
     c.setFont("Helvetica", 10)
+    y -= 14
+    total_sum = 0.0
     for v in verifs:
         if y < 80:
             c.showPage()
             y = height - 40
             c.setFont("Helvetica-Bold", 14)
             c.drawString(40, y, f"Verifikationslista {year}")
-            y -= 20
+            y -= 26
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(40, y, "Ver\tDatum\tMotpart\tBelopp")
             c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"#{v.immutable_seq}  {v.date.isoformat()}  {v.counterparty or ''}  {float(v.total_amount):.2f} {v.currency}")
+            y -= 14
+        total_sum += float(v.total_amount)
+        c.drawString(40, y, f"V{v.immutable_seq}\t{v.date.isoformat()}\t{(v.counterparty or '')[:24]}\t{float(v.total_amount):.2f} {v.currency}")
         y -= 14
         estmt = select(Entry).where(Entry.verification_id == v.id).order_by(Entry.id)
         entries = (await session.execute(estmt)).scalars().all()
@@ -57,6 +65,13 @@ async def export_verifications_pdf(year: int, session: AsyncSession = Depends(ge
             c.drawString(60, y, f"{e.account:>4}  D {float(e.debit or 0):.2f}  K {float(e.credit or 0):.2f}")
             y -= 12
         y -= 8
+
+    # Footer total
+    if y < 40:
+        c.showPage()
+        y = height - 40
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(40, y, f"Summa: {total_sum:.2f} SEK")
 
     c.showPage()
     c.save()
