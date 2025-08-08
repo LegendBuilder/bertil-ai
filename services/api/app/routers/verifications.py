@@ -243,3 +243,31 @@ async def correct_verification_date(ver_id: int, body: CorrectionDateIn, session
     return {"reversal": reversed_created, "corrected": corrected_created}
 
 
+class CorrectionDocumentIn(BaseModel):
+    document_id: str
+
+
+@router.post("/{ver_id}/correct-document")
+async def correct_verification_document(ver_id: int, body: CorrectionDocumentIn, session: AsyncSession = Depends(get_session)) -> dict:
+    v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Not found")
+    entries = (await session.execute(select(Entry).where(Entry.verification_id == v.id).order_by(Entry.id))).scalars().all()
+    # First reversal
+    await reverse_verification(ver_id, session)
+    # Then create new with same data but with document_link
+    link = f"/documents/{body.document_id}"
+    vin = VerificationIn(
+        org_id=v.org_id,
+        fiscal_year_id=v.fiscal_year_id,
+        date=v.date,
+        total_amount=float(v.total_amount),
+        currency=v.currency,
+        vat_amount=float(v.vat_amount or 0.0) if v.vat_amount is not None else None,
+        counterparty=v.counterparty,
+        document_link=link,
+        entries=[EntryIn(account=e.account, debit=float(e.debit or 0.0), credit=float(e.credit or 0.0), dimension=e.dimension) for e in entries],
+    )
+    corrected_created = await create_verification(vin, session)
+    return {"corrected": corrected_created}
+

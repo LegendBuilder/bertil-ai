@@ -7,6 +7,9 @@ __pycache__/
 .env.*
 .coverage
 htmlcov/
+services/api/.worm_store/
+services/api/.verification_meta/
+services/api/.secrets/
 
 # Flutter
 apps/mobile_web_flutter/.dart_tool/

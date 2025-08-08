@@ -82,3 +82,23 @@ def test_reverse_and_correct_date() -> None:
         assert r_fix.status_code == 200
 
 
+def test_correct_document_link() -> None:
+    with TestClient(app) as client:
+        payload = {
+            "org_id": 1,
+            "date": "2025-06-01",
+            "total_amount": 80.0,
+            "currency": "SEK",
+            "entries": [
+                {"account": "1910", "debit": 80.0, "credit": 0.0},
+                {"account": "4000", "debit": 0.0, "credit": 80.0},
+            ],
+        }
+        r = client.post("/verifications", json=payload)
+        assert r.status_code == 200
+        ver_id = r.json()["id"]
+        doc_id = "d" * 64
+        r2 = client.post(f"/verifications/{ver_id}/correct-document", json={"document_id": doc_id})
+        assert r2.status_code == 200
+
+

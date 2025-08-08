@@ -62,6 +62,8 @@ Jurisdiktion & lagring
 
 Status (Pass 2)
 
-- Monorepo scaffoldat, CI-workflows skapade, Terraform-stubbar tillagda. Backend och Flutter har basala tester som ska passera.
+- Monorepo scaffoldat, CI-workflows skapade, Terraform-stubbar tillagda.
+- Backend: Auth (stub), Ingest (WORM), Verifikationer (append-only + ombokning/korrigering), Compliance-regler (R-001/011/021/031/DUP/VAT/PERIOD), SIE/PDF-exporter, DLP-maskning util, E2E-prestandatest.
+- Flutter: BankID-stubflöde, Kamera/Upload (auto-crop, blänkvarning, batch), Dokumentlista/detalj (OCR-overlay, explainability, öppna verifikation), Dashboard (Trygghetsmätare + flaggor), Verifikationsvy (entries, audit-hash, åtgärder), Rapporter (SIE/PDF-knappar).
 
 

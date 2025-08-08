@@ -26,52 +26,69 @@ async def export_verifications_pdf(year: int, session: AsyncSession = Depends(ge
 
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
+    c.setTitle(f"Verifikationslista {year}")
     width, height = A4
+    left_margin = 40
+    top_margin = height - 40
+    line_height = 14
+
+    def draw_header() -> None:
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(left_margin, top_margin, f"Verifikationslista {year}")
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(left_margin, top_margin - 26, "Ver\tDatum\tMotpart\tBelopp")
+
+    def draw_footer(page_num: int) -> None:
+        c.setFont("Helvetica", 9)
+        c.drawRightString(width - left_margin, 20, f"Sida {page_num}")
 
     # Fetch data
     stmt = select(Verification).where(Verification.date.between(date(year, 1, 1), date(year, 12, 31))).order_by(Verification.id)
     verifs = (await session.execute(stmt)).scalars().all()
-
-    y = height - 40
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(40, y, f"Verifikationslista {year}")
-    y -= 26
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(40, y, "Ver\tDatum\tMotpart\tBelopp")
+    page_num = 1
+    draw_header()
     c.setFont("Helvetica", 10)
-    y -= 14
+    y = top_margin - 26 - line_height
     total_sum = 0.0
     for v in verifs:
         if y < 80:
+            draw_footer(page_num)
             c.showPage()
-            y = height - 40
-            c.setFont("Helvetica-Bold", 14)
-            c.drawString(40, y, f"Verifikationslista {year}")
-            y -= 26
-            c.setFont("Helvetica-Bold", 10)
-            c.drawString(40, y, "Ver\tDatum\tMotpart\tBelopp")
+            page_num += 1
+            draw_header()
             c.setFont("Helvetica", 10)
-            y -= 14
+            y = top_margin - 26 - line_height
         total_sum += float(v.total_amount)
-        c.drawString(40, y, f"V{v.immutable_seq}\t{v.date.isoformat()}\t{(v.counterparty or '')[:24]}\t{float(v.total_amount):.2f} {v.currency}")
-        y -= 14
+        c.drawString(left_margin, y, f"V{v.immutable_seq}\t{v.date.isoformat()}\t{(v.counterparty or '')[:24]}\t{float(v.total_amount):.2f} {v.currency}")
+        y -= line_height
         estmt = select(Entry).where(Entry.verification_id == v.id).order_by(Entry.id)
         entries = (await session.execute(estmt)).scalars().all()
         for e in entries:
+            debit = float(e.debit or 0)
+            credit = float(e.credit or 0)
+            if abs(debit) < 1e-6 and abs(credit) < 1e-6:
+                continue
             if y < 60:
+                draw_footer(page_num)
                 c.showPage()
-                y = height - 60
+                page_num += 1
+                draw_header()
                 c.setFont("Helvetica", 10)
-            c.drawString(60, y, f"{e.account:>4}  D {float(e.debit or 0):.2f}  K {float(e.credit or 0):.2f}")
+                y = top_margin - 26 - line_height
+            c.drawString(left_margin + 20, y, f"{e.account:>4}  D {debit:.2f}  K {credit:.2f}")
             y -= 12
         y -= 8
 
     # Footer total
     if y < 40:
+        draw_footer(page_num)
         c.showPage()
-        y = height - 40
+        page_num += 1
+        draw_header()
+        y = top_margin - 26 - line_height
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(40, y, f"Summa: {total_sum:.2f} SEK")
+    c.drawString(left_margin, y, f"Summa: {total_sum:.2f} SEK")
+    draw_footer(page_num)
 
     c.showPage()
     c.save()
