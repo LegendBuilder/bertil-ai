@@ -8,7 +8,7 @@ from typing import Iterable
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Verification
+from .models import Verification, ComplianceFlag
 
 
 @dataclass
@@ -129,4 +129,27 @@ def compute_score(flags: Iterable[RuleFlag]) -> int:
             score -= 10
     return max(0, score)
 
+
+async def run_verification_rules(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    flags: list[RuleFlag] = []
+    flags.extend(await rule_R001(session, v))
+    flags.extend(await rule_R011(session, v))
+    flags.extend(await rule_R021(session, v))
+    flags.extend(await rule_R031(session, v))
+    return flags
+
+
+async def persist_flags(session: AsyncSession, entity_type: str, entity_id: int, flags: Iterable[RuleFlag]) -> None:
+    for f in flags:
+        session.add(
+            ComplianceFlag(
+                entity_type=entity_type,
+                entity_id=entity_id,
+                rule_code=f.rule_code,
+                severity=f.severity,
+                message=f.message,
+                resolved_by=None,
+            )
+        )
+    await session.commit()
 

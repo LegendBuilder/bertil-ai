@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..audit import append_audit_event
+from ..compliance import run_verification_rules, persist_flags
 from ..models import Entry, Verification, AuditLog
 
 
@@ -99,6 +100,10 @@ async def create_verification(
             target=f"verifications:{v.id}",
             event_payload_hash=payload_hash,
         )
+    # Run compliance rules for this verification and persist flags
+    flags = await run_verification_rules(session, v)
+    if flags:
+        await persist_flags(session, "verification", v.id, flags)
     return {"id": v.id, "immutable_seq": v.immutable_seq, "audit_hash": chain_hash}
 
 
