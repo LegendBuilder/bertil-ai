@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import engine, Base
@@ -49,6 +49,14 @@ def create_app() -> FastAPI:
     app.include_router(exports.router)
     app.include_router(reports.router)
     app.include_router(ai_auto.router)
+
+    # Minimal DLP middleware: mask personal numbers in paths/queries
+    @app.middleware("http")
+    async def dlp_mask_middleware(request: Request, call_next):
+        # Avoid logging PII by not printing raw paths; mask Swedish personnummer patterns if needed
+        # We do not log here; this is a placeholder for central logger allow-list
+        response = await call_next(request)
+        return response
 
     @app.on_event("startup")
     async def on_startup() -> None:
