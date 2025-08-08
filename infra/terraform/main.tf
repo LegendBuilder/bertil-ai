@@ -45,6 +45,22 @@ resource "aws_s3_bucket_object_lock_configuration" "archive" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "archive" {
+  bucket = aws_s3_bucket.archive.id
+
+  rule {
+    id     = "deny-noncurrent-deletes"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 0
+    }
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
 resource "aws_db_instance" "postgres" {
   identifier          = "bertil-db-${var.environment}"
   engine              = "postgres"
