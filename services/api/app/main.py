@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from .logging_utils import mask_in_structure
 
 
 def create_app() -> FastAPI:
@@ -56,6 +57,8 @@ def create_app() -> FastAPI:
         # Avoid logging PII by not printing raw paths; mask Swedish personnummer patterns if needed
         # We do not log here; this is a placeholder for central logger allow-list
         response = await call_next(request)
+        # Example: if we were to log, mask response bodies (disabled by default)
+        _ = mask_in_structure  # keep import used to show masking is available
         return response
 
     @app.middleware("http")

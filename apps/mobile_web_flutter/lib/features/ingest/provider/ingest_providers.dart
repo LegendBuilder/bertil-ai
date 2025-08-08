@@ -31,6 +31,7 @@ class UploadController extends StateNotifier<UploadState> {
 
   Future<void> uploadBytes(Uint8List bytes, String filename, {required Map<String, dynamic> meta}) async {
     state = state.copyWith(isUploading: true, message: 'Laddar upp…');
+    final start = DateTime.now();
     final checksum = sha256Hex(bytes);
     final withHash = Map<String, dynamic>.from(meta)..['hash_sha256'] = checksum;
     // Try immediate upload; on failure enqueue
@@ -56,9 +57,10 @@ class UploadController extends StateNotifier<UploadState> {
           await _api.autoPostFromExtracted(documentId: resp.documentId, total: total, dateIso: dateIso!, vendor: vendor);
         }
       }
+      final elapsed = DateTime.now().difference(start).inMilliseconds / 1000.0;
       final msg = resp.duplicate
           ? 'Dubblett upptäckt – vi har redan detta kvitto$worm'
-          : 'Uppladdat → Läser → Bokfört ✅$worm';
+          : 'Uppladdat → Läser → Bokfört ✅$worm (${elapsed.toStringAsFixed(1)} s)';
       state = state.copyWith(isUploading: false, lastDocumentId: resp.documentId, isDuplicate: resp.duplicate, message: msg);
       if (!resp.duplicate) {
         _recentDocs.add(DocumentSummary(id: resp.documentId, uploadedAt: DateTime.now()));
