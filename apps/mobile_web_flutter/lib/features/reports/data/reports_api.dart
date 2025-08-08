@@ -28,6 +28,11 @@ class ReportsApi {
     final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
     return Uri.parse('$base/exports/sie?year=$year');
   }
+
+  Uri verificationsPdfUrl(int year) {
+    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    return Uri.parse('$base/exports/verifications.pdf?year=$year');
+  }
 }
 
 final reportsApiProvider = Provider<ReportsApi>((ref) => ReportsApi(NetworkService().client));

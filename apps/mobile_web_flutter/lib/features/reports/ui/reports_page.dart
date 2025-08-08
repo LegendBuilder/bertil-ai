@@ -55,19 +55,37 @@ class ReportsPage extends ConsumerWidget {
             const SizedBox(height: 16),
             Text('Export', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Builder(builder: (context) {
-              final url = ReportsApi(NetworkService().client).sieExportUrl(DateTime.now().year).toString();
-              return OutlinedButton.icon(
-                onPressed: () async {
-                  final uri = Uri.parse(url);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-                icon: const Icon(Icons.download_outlined),
-                label: const Text('Ladda ner SIE'),
-              );
-            }),
+            Row(
+              children: [
+                Builder(builder: (context) {
+                  final url = ReportsApi(NetworkService().client).sieExportUrl(DateTime.now().year).toString();
+                  return OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Ladda ner SIE'),
+                  );
+                }),
+                const SizedBox(width: 12),
+                Builder(builder: (context) {
+                  final url = ReportsApi(NetworkService().client).verificationsPdfUrl(DateTime.now().year).toString();
+                  return OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Verifikationslista (PDF)'),
+                  );
+                }),
+              ],
+            ),
             const SizedBox(height: 24),
             Text('Årsavslut (K2/K3)', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),

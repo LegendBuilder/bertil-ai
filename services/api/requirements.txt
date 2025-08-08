@@ -16,5 +16,6 @@ google-cloud-vision==3.7.3
 boto3==1.35.23
 pytesseract==0.3.10
 Pillow==10.4.0
+reportlab==4.2.2
 
 
