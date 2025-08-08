@@ -18,6 +18,17 @@ class VerificationSummary {
   final String currency;
 }
 
+class VerificationDetail {
+  VerificationDetail({required this.id, required this.immutableSeq, required this.date, required this.totalAmount, required this.currency, required this.entries, required this.auditHash});
+  final int id;
+  final int immutableSeq;
+  final String date;
+  final double totalAmount;
+  final String currency;
+  final List<Map<String, dynamic>> entries;
+  final String auditHash;
+}
+
 class LedgerApi {
   LedgerApi(this._dio);
   final Dio _dio;
@@ -40,6 +51,21 @@ class LedgerApi {
               currency: e['currency'] as String,
             ))
         .toList();
+  }
+
+  Future<VerificationDetail> getVerification(int id) async {
+    // Temporary: build from list endpoint; backend detail endpoint can be added later
+    final list = await listVerifications();
+    final v = list.firstWhere((x) => x.id == id);
+    return VerificationDetail(
+      id: v.id,
+      immutableSeq: v.immutableSeq,
+      date: v.date,
+      totalAmount: v.totalAmount,
+      currency: v.currency,
+      entries: const [],
+      auditHash: '',
+    );
   }
 }
 

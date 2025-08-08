@@ -86,14 +86,15 @@ class DocumentDetailPage extends ConsumerWidget {
                               minHeight: 6,
                             ),
                           ),
+                        const SizedBox(height: 16),
+                        const Text('Varför valde vi detta?'),
+                        const SizedBox(height: 8),
+                        const Text('Exempel: "Valde 5811 (representation) p.g.a. ‘Lunch’ + 12% moms + belopp < 300 kr."'),
                         const Spacer(),
-                        Row(
-                          children: const [
-                            Chip(label: Text('AI: "Vet inte" tillgängligt')),
-                            SizedBox(width: 8),
-                            Chip(label: Text('WORM 7 år')),
-                          ],
-                        )
+                        Wrap(spacing: 8, runSpacing: 8, children: const [
+                          Chip(label: Text('AI: "Vet inte" tillgängligt')),
+                          Chip(label: Text('WORM 7 år')),
+                        ])
                       ],
                     ),
                   ),
