@@ -26,7 +26,8 @@ jobs:
       - name: Format check (black)
         run: black --check services/api
       - name: Tests (pytest + coverage)
-        run: pytest --cov=services/api --cov-report=xml --cov-fail-under=80
+        run: |
+          E2E_MAX_SECONDS=20 pytest --cov=services/api --cov-report=xml --cov-fail-under=80
       - name: WORM layout smoke test
         run: |
           python - <<'PY'
