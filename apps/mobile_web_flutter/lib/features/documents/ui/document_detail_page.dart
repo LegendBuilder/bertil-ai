@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/document_providers.dart';
 import '../provider/document_list_providers.dart';
 import '../domain/document.dart';
+import '../provider/explainability_provider.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -91,7 +92,10 @@ class DocumentDetailPage extends ConsumerWidget {
                         const SizedBox(height: 16),
                         const Text('Varför valde vi detta?'),
                         const SizedBox(height: 8),
-                        const Text('Exempel: "Valde 5811 (representation) p.g.a. ‘Lunch’ + 12% moms + belopp < 300 kr."'),
+                        Builder(builder: (context) {
+                          final reason = ref.watch(explainabilityProvider(doc));
+                          return Text(reason);
+                        }),
                         const Spacer(),
                         Wrap(spacing: 8, runSpacing: 8, children: [
                           ElevatedButton(
