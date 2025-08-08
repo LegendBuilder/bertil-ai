@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../provider/document_providers.dart';
+import '../provider/document_list_providers.dart';
+import '../domain/document.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -91,9 +93,22 @@ class DocumentDetailPage extends ConsumerWidget {
                         const SizedBox(height: 8),
                         const Text('Exempel: "Valde 5811 (representation) p.g.a. ‘Lunch’ + 12% moms + belopp < 300 kr."'),
                         const Spacer(),
-                        Wrap(spacing: 8, runSpacing: 8, children: const [
-                          Chip(label: Text('AI: "Vet inte" tillgängligt')),
-                          Chip(label: Text('WORM 7 år')),
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.waitingInfo);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som "Väntar info"')));
+                            },
+                            child: const Text('Vet inte'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som Klar')));
+                            },
+                            child: const Text('Markera Klar'),
+                          ),
+                          const Chip(label: Text('WORM 7 år')),
                         ])
                       ],
                     ),
