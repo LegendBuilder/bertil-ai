@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
 
@@ -11,10 +12,9 @@ class NetworkService {
   Stream<NetworkIssue?> get errors => _errorController.stream;
   void clearError() => _errorController.add(null);
 
-  final Dio _dio = Dio(
+  late final Dio _dio = Dio(
     BaseOptions(
-      // Adjust baseUrl per environment as needed
-      baseUrl: const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000'),
+      baseUrl: _resolveBaseUrl(),
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 20),
       sendTimeout: const Duration(seconds: 20),
@@ -54,6 +54,15 @@ class NetworkService {
   static String? _authToken;
   static void setAuthToken(String? token) {
     _authToken = token;
+  }
+
+  static String _resolveBaseUrl() {
+    // Allow override via --dart-define
+    const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) return envUrl;
+    // Default per platform
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://localhost:8000';
   }
 
   bool _isRetriable(DioException e) {
