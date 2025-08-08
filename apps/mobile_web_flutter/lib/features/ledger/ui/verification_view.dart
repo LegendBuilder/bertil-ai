@@ -79,6 +79,36 @@ class _VerificationDetailPage extends ConsumerWidget {
                   Text(v.explainability!),
                   const SizedBox(height: 12),
                 ],
+                FutureBuilder(
+                  future: api.getVerificationFlags(id),
+                  builder: (context, snapFlags) {
+                    if (!snapFlags.hasData) return const SizedBox.shrink();
+                    final flags = snapFlags.data!;
+                    if (flags.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Flaggor', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final f in flags)
+                              Chip(
+                                backgroundColor: (f['severity'] == 'error')
+                                    ? Colors.red.shade100
+                                    : (f['severity'] == 'warning')
+                                        ? Colors.orange.shade100
+                                        : Colors.green.shade100,
+                                label: Text(f['message'] as String),
+                              ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
                 const Text('Poster:'),
                 const SizedBox(height: 8),
                 Expanded(

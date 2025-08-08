@@ -71,6 +71,11 @@ class LedgerApi {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getVerificationFlags(int id) async {
+    final res = await _dio.get('/compliance/verification/$id');
+    return (res.data['flags'] as List).cast<Map<String, dynamic>>();
+  }
+
   Future<int> createVerification({
     required int orgId,
     required String dateIso,
