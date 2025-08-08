@@ -58,6 +58,8 @@ class _VerificationDetailPage extends ConsumerWidget {
               children: [
                 Text('Datum: ${v.date}'),
                 Text('Total: ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
+                if (v.documentLink != null && v.documentLink!.isNotEmpty)
+                  Text('Underlag: ${v.documentLink}'),
                 const SizedBox(height: 8),
                 Row(
                   children: [

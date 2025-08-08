@@ -160,6 +160,7 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
         "date": v.date.isoformat(),
         "total_amount": float(v.total_amount),
         "currency": v.currency,
+        "document_link": v.document_link,
         "entries": [
             {
                 "id": e.id,
