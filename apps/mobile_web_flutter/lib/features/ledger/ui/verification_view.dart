@@ -105,6 +105,16 @@ class _VerificationDetailPage extends ConsumerWidget {
                               ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              final docId = v.documentLink!.split('/documents/').last;
+                              Navigator.of(context).pushNamed('/documents/$docId');
+                            },
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('Åtgärda: öppna underlag'),
+                          ),
                       ],
                     );
                   },
