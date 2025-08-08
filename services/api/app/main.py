@@ -58,6 +58,12 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         return response
 
+    @app.middleware("http")
+    async def region_policy_middleware(request: Request, call_next):
+        # Basic region enforcement stub: block explicit non-EU endpoints if present (future use)
+        # This is a minimal placeholder; real enforcement would inspect storage/compute regions
+        return await call_next(request)
+
     @app.on_event("startup")
     async def on_startup() -> None:
         # Create tables for local/dev (SQLite). In production use Alembic migrations.

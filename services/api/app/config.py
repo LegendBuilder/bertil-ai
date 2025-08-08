@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     tesseract_cmd: str | None = None
+    allowed_regions: str = "SE,EU"
 
     class Config:
         env_prefix = ""
