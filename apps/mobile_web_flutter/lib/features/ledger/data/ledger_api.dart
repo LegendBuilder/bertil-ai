@@ -81,6 +81,11 @@ class LedgerApi {
     return res.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> reverseVerification(int id) async {
+    final res = await _dio.post('/verifications/$id/reverse');
+    return res.data as Map<String, dynamic>;
+  }
+
   Future<int> createVerification({
     required int orgId,
     required String dateIso,

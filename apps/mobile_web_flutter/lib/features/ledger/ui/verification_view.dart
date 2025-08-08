@@ -151,7 +151,21 @@ class _VerificationDetailPage extends ConsumerWidget {
                   ),
                 ),
                 const Spacer(),
-                const Text('Append-only: Rättning sker med ombokning, aldrig direkt ändring.'),
+                Row(
+                  children: [
+                    Expanded(child: const Text('Append-only: Rättning sker med ombokning, aldrig direkt ändring.')),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        await api.reverseVerification(id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ombokning skapad')));
+                        }
+                      },
+                      icon: const Icon(Icons.undo_outlined),
+                      label: const Text('Skapa ombokning'),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
