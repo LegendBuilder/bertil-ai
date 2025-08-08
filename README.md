@@ -33,10 +33,15 @@ Flutter-klient
 
 1. (Första gången) Säkerställ att Flutter finns i PATH och kör:
    - cd apps\mobile_web_flutter
+   - flutter create .   (genererar android/ios mappar)
    - flutter pub get
    - flutter test
 2. Kör appen (t.ex. web):
    - flutter run -d chrome
+3. Kör i Android emulator (exempel):
+   - uvicorn services.api.app.main:app --reload
+   - cd apps\mobile_web_flutter
+   - flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
 Miljövariabler
 

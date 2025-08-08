@@ -6,9 +6,17 @@ Prereqs
 
 Run backend locally
 - In repo root: `uvicorn services.api.app.main:app --reload`
+- Or PowerShell: `./scripts/dev/run_backend.ps1`
+
+Prepare platforms (first time)
+- `cd apps/mobile_web_flutter`
+- `flutter create .`  (generates `android/` and `ios/` folders)
+
+Allow cleartext HTTP (debug)
+- Edit `android/app/src/main/AndroidManifest.xml` and add to `<application>`:
+  `android:usesCleartextTraffic="true"`
 
 Run app in emulator
-- `cd apps/mobile_web_flutter`
 - `flutter pub get`
 - `flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000`
 
