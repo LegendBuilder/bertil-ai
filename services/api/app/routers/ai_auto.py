@@ -37,6 +37,10 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
         entries=[EntryIn(**e) for e in entries],
     )
     # Delegate to existing create_verification route
-    return await create_verification(vin, session)
+    created = await create_verification(vin, session)
+    return {
+        **created,
+        "explainability": f"{decision.reason}. Total {total:.2f} SEK, konto {decision.expense_account}, moms {int(decision.vat_rate*100)}%",
+    }
 
 
