@@ -176,3 +176,13 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
     }
 
 
+@router.get("/by-document/{doc_id}")
+async def get_verification_by_document(doc_id: str, session: AsyncSession = Depends(get_session)) -> dict:
+    link = f"/documents/{doc_id}"
+    stmt = select(Verification).where(Verification.document_link == link).order_by(Verification.id.desc())
+    v = (await session.execute(stmt)).scalars().first()
+    if not v:
+        return {"id": None, "immutable_seq": None}
+    return {"id": v.id, "immutable_seq": v.immutable_seq}
+
+

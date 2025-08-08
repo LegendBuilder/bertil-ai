@@ -6,6 +6,7 @@ import '../provider/document_list_providers.dart';
 import '../domain/document.dart';
 import '../provider/explainability_provider.dart';
 import '../../ingest/data/ingest_api.dart';
+import '../../ledger/data/ledger_api.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -131,6 +132,24 @@ class DocumentDetailPage extends ConsumerWidget {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bokfört ✅ (V#${res['id']})')));
                             },
                             child: const Text('Bokför automatiskt'),
+                          ),
+                          OutlinedButton(
+                            onPressed: () async {
+                              final api = LedgerApi(NetworkService().client);
+                              final r = await api._dio.get('/verifications/by-document/$id');
+                              final data = r.data as Map<String, dynamic>;
+                              final verId = data['id'] as int?;
+                              if (verId != null) {
+                                if (context.mounted) {
+                                  Navigator.of(context).pushNamed('/verifications');
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ingen verifikation hittad ännu')));
+                                }
+                              }
+                            },
+                            child: const Text('Öppna verifikation'),
                           ),
                           ElevatedButton(
                             onPressed: () {
