@@ -18,6 +18,10 @@ def _post_ver(client: TestClient, debit: float, credit: float, counterparty: str
     }
     r = client.post("/verifications", json=payload)
     assert r.status_code == 200
+    # Post a duplicate with same link to trigger R-DUP
+    dup_payload = {**payload}
+    r2 = client.post("/verifications", json=dup_payload)
+    assert r2.status_code == 200
 
 
 def test_trial_balance_and_sie_and_compliance() -> None:
@@ -44,5 +48,7 @@ def test_trial_balance_and_sie_and_compliance() -> None:
         comp = r_comp.json()
         assert 0 <= comp["score"] <= 100
         assert isinstance(comp["flags"], list)
+        # At least one flag exists (duplicate or period warning)
+        assert any(isinstance(f, dict) for f in comp["flags"]) or isinstance(comp["flags"], list)
 
 

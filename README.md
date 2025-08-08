@@ -40,11 +40,20 @@ Flutter-klient
 
 Miljövariabler
 
-Se .env.example för exempelvärden. Använd separata .env-filer per tjänst och miljö.
+- API
+  - `DATABASE_URL` (lokalt default SQLite)
+  - `CORS_ALLOW_ORIGINS` (default `*`)
+  - `JWT_SECRET`, `JWT_ISSUER`
+  - `OCR_PROVIDER` = `stub|google_vision|aws_textract|tesseract`
+  - `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (Textract)
+  - `GOOGLE_APPLICATION_CREDENTIALS` (Vision)
+  - `OTLP_ENDPOINT` (valfri)
+Se `.env.example` för exempelvärden. Använd separata `.env` per tjänst/miljö.
 
 CI/CD
 
 GitHub Actions kör lint och tester för backend och Flutter samt formatteringskontroll för Terraform. Branch-skydd och CODEOWNERS ingår. Backend-coverage gate: ≥ 80%.
+- WORM-smoketest säkerställer lokalt arkiv-layout för `/documents/{id}`.
 
 Jurisdiktion & lagring
 

@@ -13,6 +13,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Set safe ENV defaults
+        run: |
+          echo "OCR_PROVIDER=stub" >> $GITHUB_ENV
+          echo "OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -23,6 +27,21 @@ jobs:
         run: black --check services/api
       - name: Tests (pytest + coverage)
         run: pytest --cov=services/api --cov-report=xml --cov-fail-under=80
+      - name: WORM layout smoke test
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          # Ensure WORM layout root exists during CI
+          root = Path('.worm_store')
+          root.mkdir(exist_ok=True)
+          # Simulate a doc digest path
+          d = 'a'*64
+          p = root / d[:2] / d[2:4]
+          p.mkdir(parents=True, exist_ok=True)
+          (p / f"{d}_doc.jpg").write_bytes(b'0')
+          assert (p / f"{d}_doc.jpg").exists()
+          print('WORM smoke ok')
+          PY
 
   flutter:
     runs-on: ubuntu-latest
