@@ -37,11 +37,34 @@ class DashboardPage extends ConsumerWidget {
                       : t.score >= 50
                           ? '⚠️ ${t.flags.length} saker kvar'
                           : '❌ blockerat';
-                  return Row(children: [
-                    Chip(label: Text('Trygghetsmätare')),
-                    const SizedBox(width: 8),
-                    Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                  ]);
+                  final topFlags = t.flags.take(3).toList();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Chip(label: Text('Trygghetsmätare')),
+                        const SizedBox(width: 8),
+                        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                      ]),
+                      const SizedBox(height: 8),
+                      if (topFlags.isNotEmpty)
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final f in topFlags)
+                              Chip(
+                                backgroundColor: (f['severity'] == 'error')
+                                    ? Colors.red.shade100
+                                    : (f['severity'] == 'warning')
+                                        ? Colors.orange.shade100
+                                        : Colors.green.shade100,
+                                label: Text(f['message'] as String),
+                              )
+                          ],
+                        ),
+                    ],
+                  );
                 },
               );
             }),
