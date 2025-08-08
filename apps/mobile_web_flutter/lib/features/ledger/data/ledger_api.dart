@@ -66,6 +66,31 @@ class LedgerApi {
       auditHash: (data['audit_hash'] ?? '') as String,
     );
   }
+
+  Future<int> createVerification({
+    required int orgId,
+    required String dateIso,
+    required double totalAmount,
+    String currency = 'SEK',
+    double? vatAmount,
+    String? counterparty,
+    String? documentLink,
+    required List<Map<String, dynamic>> entries,
+  }) async {
+    final body = {
+      'org_id': orgId,
+      'date': dateIso,
+      'total_amount': totalAmount,
+      'currency': currency,
+      if (vatAmount != null) 'vat_amount': vatAmount,
+      if (counterparty != null) 'counterparty': counterparty,
+      if (documentLink != null) 'document_link': documentLink,
+      'entries': entries,
+    };
+    final res = await _dio.post('/verifications', data: body);
+    final data = res.data as Map<String, dynamic>;
+    return data['id'] as int;
+  }
 }
 
 final ledgerApiProvider = Provider<LedgerApi>((ref) => LedgerApi(NetworkService().client));

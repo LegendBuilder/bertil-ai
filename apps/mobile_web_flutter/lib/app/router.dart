@@ -13,6 +13,7 @@ import '../features/auth/provider/auth_providers.dart';
 import '../features/documents/ui/document_detail_page.dart';
 import '../features/ingest/ui/upload_queue_page.dart';
 import '../features/ledger/ui/verification_view.dart';
+import '../features/ledger/ui/create_verification_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -42,6 +43,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: '/reports', builder: (context, state) => const ReportsPage()),
           GoRoute(path: '/verifications', builder: (context, state) => const VerificationListPage()),
+          GoRoute(path: '/verifications/create', builder: (context, state) => const CreateVerificationPage()),
           GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
         ],
       ),
