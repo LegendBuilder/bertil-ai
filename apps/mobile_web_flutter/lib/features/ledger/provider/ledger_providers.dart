@@ -11,6 +11,11 @@ final trustSummaryProvider = FutureProvider<TrustSummary>((ref) async {
   return api.getComplianceSummary(year);
 });
 
+final recentVerificationsProvider = FutureProvider<List<VerificationSummary>>((ref) async {
+  final api = ref.watch(ledgerApiProvider);
+  return api.listVerifications(year: DateTime.now().year);
+});
+
 final nextActionProvider = Provider<NextAction>((ref) {
   final recentDocs = ref.watch(recentDocumentsProvider);
   if (recentDocs.isEmpty) {
