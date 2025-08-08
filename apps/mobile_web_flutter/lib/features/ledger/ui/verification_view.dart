@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../provider/ledger_providers.dart';
@@ -57,10 +58,36 @@ class _VerificationDetailPage extends ConsumerWidget {
               children: [
                 Text('Datum: ${v.date}'),
                 Text('Total: ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: Text('Audit-hash: ${v.auditHash.isEmpty ? '(saknas)' : v.auditHash}')),
+                    if (v.auditHash.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Kopiera',
+                        icon: const Icon(Icons.copy_all_outlined),
+                        onPressed: () => Clipboard.setData(ClipboardData(text: v.auditHash)),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const Text('Poster:'),
                 const SizedBox(height: 8),
-                const Text('(visas när backend-detalj finns)'),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: v.entries.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final e = v.entries[i];
+                      final debit = (e['debit'] as num).toDouble();
+                      final credit = (e['credit'] as num).toDouble();
+                      return ListTile(
+                        title: Text('${e['account']} · D ${debit.toStringAsFixed(2)} / K ${credit.toStringAsFixed(2)}'),
+                        subtitle: Text(e['dimension']?.toString() ?? ''),
+                      );
+                    },
+                  ),
+                ),
                 const Spacer(),
                 const Text('Append-only: Rättning sker med ombokning, aldrig direkt ändring.'),
               ],

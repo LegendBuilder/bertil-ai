@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..audit import append_audit_event
-from ..models import Entry, Verification
+from ..models import Entry, Verification, AuditLog
 
 
 router = APIRouter(prefix="/verifications", tags=["ledger"])
@@ -119,5 +119,42 @@ async def list_verifications(year: Optional[int] = None, session: AsyncSession =
         }
         for r in rows
     ]
+
+
+@router.get("/{ver_id}")
+async def get_verification(ver_id: int, session: AsyncSession = Depends(get_session)) -> dict:
+    vstmt = select(Verification).where(Verification.id == ver_id)
+    v = (await session.execute(vstmt)).scalars().first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Not found")
+    estmt = select(Entry).where(Entry.verification_id == v.id)
+    entries = (await session.execute(estmt)).scalars().all()
+    # Fetch latest audit chain hash for this verification target
+    at_stmt = (
+        select(AuditLog.after_hash)
+        .where(AuditLog.target == f"verifications:{v.id}")
+        .order_by(AuditLog.id.desc())
+        .limit(1)
+    )
+    audit_hash = (await session.execute(at_stmt)).scalar_one_or_none()
+    return {
+        "id": v.id,
+        "org_id": v.org_id,
+        "immutable_seq": v.immutable_seq,
+        "date": v.date.isoformat(),
+        "total_amount": float(v.total_amount),
+        "currency": v.currency,
+        "entries": [
+            {
+                "id": e.id,
+                "account": e.account,
+                "debit": float(e.debit or 0.0),
+                "credit": float(e.credit or 0.0),
+                "dimension": e.dimension,
+            }
+            for e in entries
+        ],
+        "audit_hash": audit_hash,
+    }
 
 

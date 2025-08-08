@@ -54,17 +54,16 @@ class LedgerApi {
   }
 
   Future<VerificationDetail> getVerification(int id) async {
-    // Temporary: build from list endpoint; backend detail endpoint can be added later
-    final list = await listVerifications();
-    final v = list.firstWhere((x) => x.id == id);
+    final res = await _dio.get('/verifications/$id');
+    final data = res.data as Map<String, dynamic>;
     return VerificationDetail(
-      id: v.id,
-      immutableSeq: v.immutableSeq,
-      date: v.date,
-      totalAmount: v.totalAmount,
-      currency: v.currency,
-      entries: const [],
-      auditHash: '',
+      id: data['id'] as int,
+      immutableSeq: data['immutable_seq'] as int,
+      date: data['date'] as String,
+      totalAmount: (data['total_amount'] as num).toDouble(),
+      currency: data['currency'] as String,
+      entries: (data['entries'] as List).cast<Map<String, dynamic>>(),
+      auditHash: (data['audit_hash'] ?? '') as String,
     );
   }
 }
