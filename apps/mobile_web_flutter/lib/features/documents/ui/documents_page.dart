@@ -11,7 +11,20 @@ class DocumentsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Dokument')),
       body: recent.isEmpty
-          ? const Center(child: Text('Smarta listor (Nya · Väntar info · Klara · Alla)'))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Låt oss fota ditt första kvitto. Det tar 20 sek.'),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => Navigator.of(context).pushNamed('/capture'),
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('Öppna kamera'),
+                  ),
+                ],
+              ),
+            )
           : ListView.separated(
               itemCount: recent.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
