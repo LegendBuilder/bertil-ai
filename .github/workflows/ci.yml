@@ -22,7 +22,7 @@ jobs:
       - name: Format check (black)
         run: black --check services/api
       - name: Tests (pytest + coverage)
-        run: pytest --cov=services/api --cov-report=xml --cov-fail-under=70
+        run: pytest --cov=services/api --cov-report=xml --cov-fail-under=80
 
   flutter:
     runs-on: ubuntu-latest

@@ -1,3 +1,5 @@
+[![CI](https://github.com/LegendBuilder/bertil-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/LegendBuilder/bertil-ai/actions/workflows/ci.yml)
+
 Sveriges bästa digitala revisor – Monorepo
 
 Översikt
@@ -42,7 +44,7 @@ Se .env.example för exempelvärden. Använd separata .env-filer per tjänst och
 
 CI/CD
 
-GitHub Actions kör lint och tester för backend och Flutter samt formatteringskontroll för Terraform. Branch-skydd och CODEOWNERS ingår.
+GitHub Actions kör lint och tester för backend och Flutter samt formatteringskontroll för Terraform. Branch-skydd och CODEOWNERS ingår. Backend-coverage gate: ≥ 80%.
 
 Jurisdiktion & lagring
 
