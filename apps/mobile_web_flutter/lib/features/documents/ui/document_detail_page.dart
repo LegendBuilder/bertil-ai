@@ -123,7 +123,7 @@ class DocumentDetailPage extends ConsumerWidget {
                                 orElse: () => doc.extractedFields.first,
                               ).value;
                               final api = IngestApi(NetworkService().client);
-                              final res = await api.autoPostFromExtracted(total: total, dateIso: dateIso, vendor: vendor);
+                              final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor);
                               // On success, mark doc as done
                               // ignore: use_build_context_synchronously
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);

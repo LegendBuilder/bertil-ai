@@ -23,6 +23,7 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
         dt = date.fromisoformat(body.get("date") or date.today().isoformat())
         vendor = body.get("vendor")
         org_id = int(body.get("org_id") or 1)
+        document_id = body.get("document_id")
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
 
@@ -35,7 +36,7 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
         currency="SEK",
         vat_amount=None,
         counterparty=vendor,
-        document_link=None,
+        document_link=(f"/documents/{document_id}" if document_id else None),
         entries=[EntryIn(**e) for e in entries],
     )
     # Delegate to existing create_verification route
