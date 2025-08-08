@@ -30,6 +30,15 @@ class ReportsPage extends ConsumerWidget {
                   children: [
                     Text('År ${trial.year} – Total: ${trial.total.toStringAsFixed(2)} kr'),
                     const SizedBox(height: 8),
+                    Consumer(builder: (context, ref, _) {
+                      final vat = ref.watch(vatStatusTextProvider);
+                      return vat.when(
+                        loading: () => const LinearProgressIndicator(),
+                        error: (e, st) => const SizedBox.shrink(),
+                        data: (txt) => Text(txt, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      );
+                    }),
+                    const SizedBox(height: 8),
                     comp.when(
                       loading: () => const LinearProgressIndicator(),
                       error: (e, st) => const Text('Trygghet: okänd'),
