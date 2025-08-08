@@ -1,0 +1,40 @@
+name: bertil_mobile_web_flutter
+description: Sveriges bästa digitala revisor – Flutter-klient (Web/iOS/Android)
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.8
+  dio: ^5.6.0
+  intl: ^0.19.0
+  url_launcher: ^6.3.0
+  # Declared for future use (not imported in MVP to keep tests simple)
+  camera: ^0.11.0+2
+  image_picker: ^1.1.2
+  file_picker: ^8.1.7
+  pdfx: ^2.6.0
+  crypto: ^3.0.3
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  path_provider: ^2.1.4
+  # isar packages reserved for offline queue in later passes
+  # isar: ^3.1.0+1
+  # isar_flutter_libs: ^3.1.0+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.2
+  network_image_mock: ^2.1.1
+  build_runner: ^2.4.13
+  isar_generator: ^3.1.0+1
+
+flutter:
+  uses-material-design: true
+
+

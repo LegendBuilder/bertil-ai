@@ -36,11 +36,18 @@ jobs:
           if [ ! -d "apps/mobile_web_flutter" ]; then
             flutter create apps/mobile_web_flutter
           fi
+      - name: Flutter pub get
+        working-directory: apps/mobile_web_flutter
+        run: flutter pub get
+      - name: Generate (build_runner)
+        working-directory: apps/mobile_web_flutter
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+      - name: Flutter analyze
+        working-directory: apps/mobile_web_flutter
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Flutter test
         working-directory: apps/mobile_web_flutter
-        run: |
-          flutter pub get
-          flutter test
+        run: flutter test
 
   terraform:
     runs-on: ubuntu-latest
