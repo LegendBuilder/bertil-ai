@@ -38,25 +38,25 @@ class ReportsApi {
     return boxes;
   }
 
-  Uri sieExportUrl(int year) {
-    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+
 $'), '').replaceAll(RegExp(r'/+$'), '');
+  Uri sieExportUrl(int year) {
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/exports/sie?year=$year');
   }
 
   Uri verificationsPdfUrl(int year) {
-    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/exports/verifications.pdf?year=$year');
   }
 
   Uri vatReportPdfUrl({required int year, required int month}) {
-    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
     return Uri.parse('$base/reports/vat?period=$period&format=pdf');
   }
 
   Uri vatSkvFileUrl({required int year, required int month}) {
-    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
     return Uri.parse('$base/reports/vat/declaration/file?period=$period');
   }
