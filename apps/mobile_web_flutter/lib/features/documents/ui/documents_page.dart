@@ -1,3 +1,4 @@
+// ignore_for_file: use_build_context_synchronously
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -68,9 +69,9 @@ class DocumentsPage extends ConsumerWidget {
                       label: const Text('Öppna kamera'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () async {
-                        await _uploadFromPicker(context, ref);
-                      },
+                       onPressed: () async {
+                         await _uploadFromPicker(context, ref);
+                       },
                       icon: const Icon(Icons.upload_file),
                       label: const Text('Ladda upp'),
                     ),
@@ -273,7 +274,6 @@ Future<void> _uploadFromPicker(BuildContext context, WidgetRef ref) async {
     filename = xfile.name;
   }
   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laddar upp…')));
-  final api = ref.read(ingestApiProvider);
   try {
     await _uploadBytes(context, ref, bytes!, filename, source: kIsWeb ? 'web_upload' : 'gallery');
   } catch (e) {

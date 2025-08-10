@@ -1,4 +1,5 @@
-﻿import 'dart:typed_data';
+﻿// ignore_for_file: use_build_context_synchronously
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -94,8 +95,11 @@ class _CapturePageState extends ConsumerState<CapturePage> {
     } catch (e) {
       // Offline fallback: queue job
       try {
-        final svc = await QueueService.create();
-        await svc.enqueueUpload(filename: filename, bytes: pickedBytes!, meta: {'source': kIsWeb ? 'web_upload' : 'camera'});
+        // Only queue offline on non-web
+        if (!kIsWeb) {
+          final svc = await QueueService.create();
+          await svc.enqueueUpload(filename: filename, bytes: pickedBytes!, meta: {'source': kIsWeb ? 'web_upload' : 'camera'});
+        }
         AnalyticsService.logEvent('enqueue_offline');
         if (mounted) {
           setState(() {

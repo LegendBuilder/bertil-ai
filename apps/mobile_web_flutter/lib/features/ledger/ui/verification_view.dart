@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../provider/ledger_providers.dart';
+// removed duplicate import
 
 class VerificationListPage extends ConsumerWidget {
   const VerificationListPage({super.key});

@@ -39,36 +39,31 @@ class ReportsApi {
   }
 
   Uri sieExportUrl(int year) {
-    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+
+$'), '').replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/exports/sie?year=$year');
   }
 
   Uri verificationsPdfUrl(int year) {
-    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/exports/verifications.pdf?year=$year');
   }
 
   Uri vatReportPdfUrl({required int year, required int month}) {
-    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
     final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
     return Uri.parse('$base/reports/vat?period=$period&format=pdf');
   }
 
   Uri vatSkvFileUrl({required int year, required int month}) {
-    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+\n+$'), '').replaceAll(RegExp(r'/+$'), '');
     final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
     return Uri.parse('$base/reports/vat/declaration/file?period=$period');
   }
 
   Future<void> importSie({required List<int> bytes, required String filename}) async {
-    // Use standard MediaType for Dio contentType
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(
-        bytes,
-        filename: filename,
-        contentType: Headers.jsonMimeType == null ? null : Headers.contentTypeHeader as dynamic,
-      ),
-    });
+    // Rely on filename extension; contentType optional
+    final form = FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: filename)});
     await _dio.post('/imports/sie', data: form);
   }
 }
