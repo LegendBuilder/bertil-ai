@@ -46,19 +46,31 @@ async def rule_R001(session: AsyncSession, v: Verification) -> list[RuleFlag]:
     return []
 
 
-async def rule_R011(_session: AsyncSession, v: Verification) -> list[RuleFlag]:
-    # Simplified: warn if older than 30 days (placeholder for next business day logic)
+async def rule_R011(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    """Timeliness per Skatteverket: cash transactions no later than next business day.
+    Heuristic: if entries include 1910 (Kassa), require created_at <= next business day of v.date.
+    Else warn if older than 30 days.
+    """
     try:
-        if isinstance(v.date, date) and (date.today() - v.date) > timedelta(days=30):
-            return [
-                RuleFlag(
-                    rule_code="R-011",
-                    severity="warning",
-                    message="Löpande bokföring kan vara försenad (äldre än 30 dagar).",
-                )
-            ]
+        if not isinstance(v.date, date):
+            return []
+        # Detect cash via account 1910 on entries
+        estmt = select(Entry).where(Entry.verification_id == v.id)
+        entries = (await session.execute(estmt)).scalars().all()
+        is_cash = any(str(e.account).startswith("1910") for e in entries)
+        if is_cash:
+            created = getattr(v, "created_at", None)
+            if not created:
+                return [RuleFlag(rule_code="R-011", severity="warning", message="Kassatransaktion utan skapad tidpunkt.")]
+            due = _next_business_day(v.date)
+            if created.date() > due:
+                return [RuleFlag(rule_code="R-011", severity="error", message="Kassatransaktion bokförd efter nästa arbetsdag.")]
+            return []
+        # Non-cash: soft warning at >30 days
+        if (date.today() - v.date) > timedelta(days=30):
+            return [RuleFlag(rule_code="R-011", severity="warning", message="Löpande bokföring kan vara försenad (äldre än 30 dagar).")]
     except Exception:
-        pass
+        return []
     return []
 
 
@@ -205,6 +217,8 @@ async def run_verification_rules(session: AsyncSession, v: Verification) -> list
     flags.extend(await rule_R031(session, v))
     flags.extend(await rule_DUP(session, v))
     flags.extend(await rule_RVAT(session, v))
+    flags.extend(await rule_RCRC(session, v))
+    flags.extend(await rule_RVC(session, v))
     flags.extend(await rule_PERIOD(session, v))
     return flags
 
@@ -228,6 +242,49 @@ async def rule_PERIOD(session: AsyncSession, v: Verification) -> list[RuleFlag]:
             )
         ]
     return []
+
+
+async def rule_RCRC(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    """Reverse charge consistency: if vat_code indicates RC, ensure 2615 and 2645 are present
+    with roughly equal amounts (tolerance 1%).
+    """
+    code = (getattr(v, "vat_code", None) or "").upper()
+    if not (code.startswith("RC") or code.startswith("EU-RC")):
+        return []
+    estmt = select(Entry).where(Entry.verification_id == v.id)
+    entries = (await session.execute(estmt)).scalars().all()
+    a2615 = sum(float(e.credit or 0.0) - float(e.debit or 0.0) for e in entries if str(e.account).startswith("2615"))
+    a2645 = sum(float(e.debit or 0.0) - float(e.credit or 0.0) for e in entries if str(e.account).startswith("2645"))
+    if a2615 <= 0 or a2645 <= 0:
+        return [RuleFlag(rule_code="R-RC", severity="error", message="Omvänd moms: 2615/2645 saknas.")]
+    # amounts should be close
+    if abs(a2615 - a2645) > max(1.0, 0.01 * max(a2615, a2645)):
+        return [RuleFlag(rule_code="R-RC", severity="warning", message="Omvänd moms: 2615/2645 belopp avviker.")]
+    return []
+
+
+def _next_business_day(d: date) -> date:
+    # Mon-Fri business days (holidays not considered in MVP)
+    from datetime import timedelta as _td
+    nd = d + _td(days=1)
+    while nd.weekday() >= 5:  # 5=Sat,6=Sun
+        nd = nd + _td(days=1)
+    return nd
+
+
+async def rule_RVC(session: AsyncSession, v: Verification) -> list[RuleFlag]:
+    """VAT code presence: if domestic input VAT detected (debit on 2641) then vat_code should be SE25/SE12/SE06.
+    If missing or not in allowed set, raise warning.
+    """
+    estmt = select(Entry).where(Entry.verification_id == v.id)
+    entries = (await session.execute(estmt)).scalars().all()
+    has_input_vat = any(str(e.account).startswith("2641") and float(e.debit or 0.0) > 0 for e in entries)
+    if not has_input_vat:
+        return []
+    code = (getattr(v, "vat_code", None) or "").upper()
+    if code in {"SE25", "SE12", "SE06"}:
+        return []
+    return [RuleFlag(rule_code="R-VATCODE", severity="warning", message="Moms-kod saknas eller är inkonsekvent för inhemsk moms (2641).")]
 
 
 async def persist_flags(session: AsyncSession, entity_type: str, entity_id: int, flags: Iterable[RuleFlag]) -> None:

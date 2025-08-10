@@ -6,6 +6,7 @@ from sqlalchemy import select
 from ..db import get_session
 from ..compliance import run_yearly_compliance, compute_score, run_verification_rules
 from ..models import ComplianceFlag, Verification
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/compliance", tags=["compliance"])
 
@@ -43,5 +44,25 @@ async def verification_flags(ver_id: int, session: AsyncSession = Depends(get_se
         return {"verification_id": ver_id, "flags": []}
     computed = await run_verification_rules(session, v)
     return {"verification_id": ver_id, "flags": [f.__dict__ for f in computed]}
+
+
+class ResolveIn(BaseModel):
+    rule_code: str
+    actor: str | None = None
+
+
+@router.post("/verification/{ver_id}/resolve")
+async def resolve_flag(ver_id: int, body: ResolveIn, session: AsyncSession = Depends(get_session)) -> dict:
+    # Mark matching flags as resolved
+    stmt = select(ComplianceFlag).where(
+        ComplianceFlag.entity_type == "verification",
+        ComplianceFlag.entity_id == ver_id,
+        ComplianceFlag.rule_code == body.rule_code,
+    )
+    flags = (await session.execute(stmt)).scalars().all()
+    for f in flags:
+        f.resolved_by = body.actor or "user"
+    await session.commit()
+    return {"verification_id": ver_id, "resolved": body.rule_code, "count": len(flags)}
 
 

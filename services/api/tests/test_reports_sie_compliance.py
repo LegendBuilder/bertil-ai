@@ -42,6 +42,12 @@ def test_trial_balance_and_sie_and_compliance() -> None:
         content = r_sie.text
         assert "#VER" in content and "#TRANS" in content
 
+        # VAT declaration boxes should exist
+        r_vd = client.get("/reports/vat/declaration", params={"period": "2025-02"})
+        assert r_vd.status_code == 200
+        boxes = r_vd.json()["boxes"]
+        assert all(k in boxes for k in ["05", "06", "07", "30", "31", "32", "48", "49"])
+
         # Compliance summary
         r_comp = client.get("/compliance/summary", params={"year": 2025})
         assert r_comp.status_code == 200

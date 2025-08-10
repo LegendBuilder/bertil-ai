@@ -23,20 +23,55 @@ class AppShell extends StatelessWidget {
     final location = GoRouterState.of(context).uri.toString();
     final selected = _indexForLocation(location);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selected,
-        onDestinationSelected: (idx) => context.go(_tabs[idx].route),
-        destinations: [
-          for (final t in _tabs)
-            NavigationDestination(
-              icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
-              label: t.label,
-              tooltip: t.label,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        if (isWide) {
+          // Desktop/tablet: NavigationRail on the side
+          return FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Scaffold(
+              body: Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: selected,
+                    onDestinationSelected: (idx) => context.go(_tabs[idx].route),
+                    labelType: NavigationRailLabelType.all,
+                    destinations: [
+                      for (final t in _tabs)
+                        NavigationRailDestination(
+                          icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
+                          label: Text(t.label),
+                        ),
+                    ],
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: child),
+                ],
+              ),
             ),
-        ],
-      ),
+          );
+        }
+        // Mobile: bottom navigation bar
+        return FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: Scaffold(
+            body: child,
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: selected,
+              onDestinationSelected: (idx) => context.go(_tabs[idx].route),
+              destinations: [
+                for (final t in _tabs)
+                  NavigationDestination(
+                    icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
+                    label: t.label,
+                    tooltip: t.label,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

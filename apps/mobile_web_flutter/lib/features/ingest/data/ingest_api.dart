@@ -41,6 +41,7 @@ class IngestApi {
     required double total,
     required String dateIso,
     String? vendor,
+    String? vatCode,
   }) async {
     final res = await _dio.post('/ai/auto-post', data: {
       'org_id': 1,
@@ -48,8 +49,15 @@ class IngestApi {
       'total': total,
       'date': dateIso,
       if (vendor != null) 'vendor': vendor,
+      if (vatCode != null) 'vat_code': vatCode,
     });
     return res.data as Map<String, dynamic>;
+  }
+
+  Uri vatSkvFileUrl({required int year, required int month}) {
+    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
+    return Uri.parse('$base/reports/vat/declaration/file?period=$period');
   }
 }
 

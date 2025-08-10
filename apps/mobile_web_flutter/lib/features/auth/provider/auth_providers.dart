@@ -51,6 +51,12 @@ class AuthController extends StateNotifier<AuthState> {
     });
   }
 
+  void loginDemo() {
+    final user = {'subject': 'DEMO-USER', 'name': 'Demo Användare'};
+    NetworkService.setAuthToken('demo-token');
+    state = state.copyWith(isLoading: false, isAuthenticated: true, message: 'Inloggad (demo)', user: user);
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();

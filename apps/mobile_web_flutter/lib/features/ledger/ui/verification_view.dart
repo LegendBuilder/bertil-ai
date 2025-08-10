@@ -1,3 +1,5 @@
+﻿import 'package:bertil_mobile_web_flutter/features/ledger/data/ledger_api.dart';
+import 'package:bertil_mobile_web_flutter/features/ledger/provider/ledger_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,14 +16,14 @@ class VerificationListPage extends ConsumerWidget {
       appBar: AppBar(title: const Text('Verifikationer')),
       body: asyncList.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Kunde inte hämta: $e')),
+        error: (e, st) => Center(child: Text('Kunde inte hÃ¤mta: $e')),
         data: (list) => ListView.separated(
           itemCount: list.length,
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, i) {
             final v = list[i];
             return ListTile(
-              title: Text('V${v.immutableSeq} · ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
+              title: Text('V${v.immutableSeq} Â· ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
               subtitle: Text(v.date),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => _VerificationDetailPage(id: v.id, immutableSeq: v.immutableSeq)),
@@ -42,13 +44,12 @@ class _VerificationDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final api = ref.watch(ledgerApiProvider);
-    return FutureBuilder(
-      future: api.getVerification(id),
+    return FutureBuilder<VerificationDetail>( future: api.getVerification(id),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        final v = snap.data!;
+        final VerificationDetail v = snap.data as VerificationDetail;
         return Scaffold(
           appBar: AppBar(title: Text('Verifikation V$immutableSeq')),
           body: Padding(
@@ -74,16 +75,15 @@ class _VerificationDetailPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (v.explainability != null && v.explainability!.isNotEmpty) ...[
-                  const Text('Varför valde vi detta?', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('VarfÃ¶r valde vi detta?', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Text(v.explainability!),
                   const SizedBox(height: 12),
                 ],
-                FutureBuilder(
-                  future: api.getVerificationFlags(id),
+                FutureBuilder<List<Map<String, dynamic>>>( future: api.getVerificationFlags(id),
                   builder: (context, snapFlags) {
                     if (!snapFlags.hasData) return const SizedBox.shrink();
-                    final flags = snapFlags.data!;
+                    final List<Map<String, dynamic>> flags = (snapFlags.data as List).cast<Map<String, dynamic>>();
                     if (flags.isEmpty) return const SizedBox.shrink();
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,7 +118,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                               }
                             },
                             icon: const Icon(Icons.event_available_outlined),
-                            label: const Text('Åtgärda: korrigera datum'),
+                            label: const Text('Ã…tgÃ¤rda: korrigera datum'),
                           ),
                         Row(children: [
                           if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
@@ -128,7 +128,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                                 Navigator.of(context).pushNamed('/documents/$docId');
                               },
                               icon: const Icon(Icons.open_in_new),
-                              label: const Text('Åtgärda: öppna underlag'),
+                              label: const Text('Ã…tgÃ¤rda: Ã¶ppna underlag'),
                             )
                           else
                             OutlinedButton.icon(
@@ -172,7 +172,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                       final debit = (e['debit'] as num).toDouble();
                       final credit = (e['credit'] as num).toDouble();
                       return ListTile(
-                        title: Text('${e['account']} · D ${debit.toStringAsFixed(2)} / K ${credit.toStringAsFixed(2)}'),
+                        title: Text('${e['account']} Â· D ${debit.toStringAsFixed(2)} / K ${credit.toStringAsFixed(2)}'),
                         subtitle: Text(e['dimension']?.toString() ?? ''),
                       );
                     },
@@ -181,7 +181,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                 const Spacer(),
                 Row(
                   children: [
-                    Expanded(child: const Text('Append-only: Rättning sker med ombokning, aldrig direkt ändring.')),
+                    Expanded(child: const Text('Append-only: RÃ¤ttning sker med ombokning, aldrig direkt Ã¤ndring.')),
                     OutlinedButton.icon(
                       onPressed: () async {
                         await api.reverseVerification(id);
@@ -202,5 +202,8 @@ class _VerificationDetailPage extends ConsumerWidget {
     );
   }
 }
+
+
+
 
 

@@ -1,161 +1,143 @@
-import 'dart:typed_data';
-// ignore: unused_import
-import 'dart:ui' as ui;
-
+﻿import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image/image.dart' as img;
-
-import '../provider/ingest_providers.dart';
+import '../../ingest/data/ingest_api.dart';
+import '../../documents/provider/document_list_providers.dart';
+import '../../documents/domain/document.dart';
+import '../../../shared/providers/success_banner_provider.dart';
+import '../../../shared/services/analytics.dart';
 import '../../../shared/services/queue/queue_service.dart';
 
-class CapturePage extends ConsumerWidget {
+class CapturePage extends ConsumerStatefulWidget {
   const CapturePage({super.key});
+  @override
+  ConsumerState<CapturePage> createState() => _CapturePageState();
+}
+
+class _CapturePageState extends ConsumerState<CapturePage> {
+  bool _busy = false;
+  String? _message;
+
+  Future<void> _pickAndUpload() async {
+    setState(() {
+      _busy = true;
+      _message = 'Väljer fil…';
+    });
+    Uint8List? pickedBytes;
+    String filename = 'image.jpg';
+    if (kIsWeb) {
+      final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false, withData: true);
+      if (result == null || result.files.isEmpty) {
+        setState(() {
+          _busy = false;
+          _message = 'Ingen fil vald';
+        });
+        return;
+      }
+      final file = result.files.first;
+      pickedBytes = Uint8List.fromList(file.bytes!);
+      filename = file.name;
+    } else {
+      final xfile = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (xfile == null) {
+        setState(() {
+          _busy = false;
+          _message = 'Ingen bild tagen';
+        });
+        return;
+      }
+      pickedBytes = await xfile.readAsBytes();
+      filename = xfile.name;
+    }
+    final api = ref.read(ingestApiProvider);
+    try {
+      setState(() => _message = 'Laddar upp…');
+      final uploaded = await api.uploadDocument(bytes: pickedBytes!, filename: filename, meta: {'source': kIsWeb ? 'web_upload' : 'camera'});
+      AnalyticsService.logEvent('capture_upload_success');
+      setState(() => _message = 'Bearbetar OCR…');
+      final ocr = await api.processOcr(uploaded.documentId);
+      AnalyticsService.logEvent('ocr_extraction_success');
+      setState(() => _message = 'Skapar verifikation…');
+      final fields = (ocr['fields'] as List).cast<Map<String, dynamic>>();
+      double total = 0.0;
+      String dateIso = DateTime.now().toIso8601String().substring(0, 10);
+      String? vendor;
+      for (final f in fields) {
+        final key = (f['key'] as String).toLowerCase();
+        final val = (f['value'] ?? '').toString();
+        if (key.contains('total') || key.contains('belopp')) {
+          final parsed = double.tryParse(val.replaceAll(',', '.').replaceAll(RegExp(r'[^0-9\.]'), ''));
+          if (parsed != null) total = parsed;
+        } else if (key.contains('date') || key.contains('datum')) {
+          dateIso = DateTime.tryParse(val)?.toIso8601String().substring(0, 10) ?? dateIso;
+        } else if (key.contains('vendor') || key.contains('motpart') || key.contains('leverantör')) {
+          vendor = val;
+        }
+      }
+      await api.autoPostFromExtracted(documentId: uploaded.documentId, total: total, dateIso: dateIso, vendor: vendor);
+      AnalyticsService.logEvent('autopost_success');
+      // Insert to recent documents for immediate visibility
+      ref.read(recentDocumentsProvider.notifier).add(
+            DocumentSummary(id: uploaded.documentId, uploadedAt: DateTime.now(), status: DocumentStatus.newDoc),
+          );
+      ref.read(successBannerProvider.notifier).show('Bokfört ✅');
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _message = 'Bokfört ✅';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Klart! Vi har bokfört detta.')));
+      }
+    } catch (e) {
+      // Offline fallback: queue job
+      try {
+        final svc = await QueueService.create();
+        await svc.enqueueUpload(filename: filename, bytes: pickedBytes!, meta: {'source': kIsWeb ? 'web_upload' : 'camera'});
+        AnalyticsService.logEvent('enqueue_offline');
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _message = 'Offline: tillagd i uppladdningskön';
+          });
+        }
+      } catch (_) {
+        setState(() {
+          _busy = false;
+          _message = 'Misslyckades: $e';
+        });
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final upload = ref.watch(uploadControllerProvider);
-    final ctrl = ref.read(uploadControllerProvider.notifier);
-
-    Future<void> _processAndUpload(Uint8List bytes, String filename) async {
-      var processed = bytes;
-      try {
-        final decoded = img.decodeImage(processed);
-        if (decoded != null && decoded.width > 0 && decoded.height > 0) {
-          final w = decoded.width;
-          final h = decoded.height;
-          final meanLuma = _estimateLuma(decoded);
-          if (meanLuma > 230) {
-            // ignore: use_build_context_synchronously
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Blänk upptäckt – vinkla kvittot och försök igen')));
-          }
-          final targetRatio = 4 / 5;
-          final currentRatio = w / h;
-          if ((currentRatio - targetRatio).abs() > 0.05) {
-            int newW = w;
-            int newH = (w / targetRatio).round();
-            if (newH > h) {
-              newH = h;
-              newW = (h * targetRatio).round();
-            }
-            final x = (w - newW) ~/ 2;
-            final y = (h - newH) ~/ 2;
-            final cropped = img.copyCrop(decoded, x: x, y: y, width: newW, height: newH);
-            processed = Uint8List.fromList(img.encodeJpg(cropped, quality: 90));
-          }
-        }
-      } catch (_) {}
-
-      await ctrl.uploadBytes(processed, filename, meta: {
-        'org_id': 1,
-        'type': 'receipt',
-        'captured_at': DateTime.now().toIso8601String(),
-      });
-      final state = ref.read(uploadControllerProvider);
-      if (state.message != null) {
-        // ignore: use_build_context_synchronously
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(state.message!),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: state.isDuplicate ? Colors.orange : null,
-        ));
-        if (!state.isDuplicate && state.lastDocumentId != null) {
-          // ignore: use_build_context_synchronously
-          Navigator.of(context).pushNamed('/documents/${state.lastDocumentId}');
-        }
-      }
-    }
-
-    Future<void> pickAndUpload(ImageSource source) async {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(source: source, imageQuality: 85);
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      await _processAndUpload(bytes as Uint8List, picked.name);
-    }
-
-    Future<void> pickBatch() async {
-      final picker = ImagePicker();
-      final picked = await picker.pickMultiImage(imageQuality: 85);
-      if (picked.isEmpty) return;
-      for (final p in picked) {
-        final bytes = await p.readAsBytes();
-        await _processAndUpload(bytes as Uint8List, p.name);
-      }
-    }
-
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Fota', semanticsLabel: 'Fota kvitto')),
+      appBar: AppBar(title: const Text('Fota / Ladda upp')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Consumer(builder: (context, ref, _) {
-              final queueFuture = ref.watch(queueServiceProvider);
-              return queueFuture.when(
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (q) => StreamBuilder<int>(
-                  stream: q.watchPendingCount(),
-                  builder: (context, snap) {
-                    final pending = snap.data ?? 0;
-                    if (pending <= 0) return const SizedBox.shrink();
-                    return ListTile(
-                      leading: const Icon(Icons.sync_outlined),
-                      title: Text('Kö: $pending väntar'),
-                      trailing: OutlinedButton(
-                        onPressed: () => q.processQueue(),
-                        child: const Text('Försök igen'),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }),
-            // Live overlay guides (static preview area)
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  height: 220,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                CustomPaint(
-                  size: const Size(double.infinity, 200),
-                  painter: _OverlayGuidesPainter(),
-                ),
-                const Positioned(
-                  bottom: 8,
-                  child: Text('Lägg kvittot inom ramen'),
-                ),
-              ],
-            ),
+            const Text('Ladda upp ett kvitto (webb) – kameraflöde kommer i mobil.'),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.camera),
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Fota kvitto', semanticsLabel: 'Öppna kamera'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: upload.isUploading ? null : () => pickAndUpload(ImageSource.gallery),
+            FilledButton.icon(
+              onPressed: _busy ? null : _pickAndUpload,
               icon: const Icon(Icons.upload_file),
-              label: const Text('Välj bild från galleri', semanticsLabel: 'Välj bild'),
+              label: const Text('Välj bild'),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: upload.isUploading ? null : pickBatch,
-              icon: const Icon(Icons.collections_outlined),
-              label: const Text('Batch: välj flera'),
-            ),
+            if (_busy) const LinearProgressIndicator(),
+            if (_message != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_message!)),
             const SizedBox(height: 24),
-            if (upload.isUploading) const LinearProgressIndicator(),
-            if (upload.lastDocumentId != null) Text('Dokument-ID: ${upload.lastDocumentId}'),
+            Expanded(
+              child: CustomPaint(
+                painter: _OverlayGuidesPainter(),
+                child: const Center(child: Text('Placera kvittot tydligt i bild – undvik blänk.')),
+              ),
+            ),
           ],
         ),
       ),
@@ -163,25 +145,9 @@ class CapturePage extends ConsumerWidget {
   }
 }
 
-double _estimateLuma(img.Image im) {
-  // sample a grid of pixels
-  final stepX = (im.width / 20).clamp(1, im.width).toInt();
-  final stepY = (im.height / 20).clamp(1, im.height).toInt();
-  int samples = 0;
-  double sum = 0;
-  for (int y = 0; y < im.height; y += stepY) {
-    for (int x = 0; x < im.width; x += stepX) {
-      final c = im.getPixel(x, y);
-      final r = img.getRed(c);
-      final g = img.getGreen(c);
-      final b = img.getBlue(c);
-      // Rec. 601 luma
-      final luma = 0.299 * r + 0.587 * g + 0.114 * b;
-      sum += luma;
-      samples++;
-    }
-  }
-  return samples == 0 ? 0 : (sum / samples);
+class _OverlayGuidesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {}
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-

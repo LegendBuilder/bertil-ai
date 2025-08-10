@@ -1,15 +1,21 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 import json
 
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, Request
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel
 from io import BytesIO
+from PIL import Image
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from ..db import get_session
+from ..config import settings
+from ..models import Document, ExtractedField
 
 # settings not used in Pass 3 scaffold
 
@@ -24,6 +30,31 @@ class DocumentMeta(BaseModel):
     captured_at: datetime | None = None
     exif: dict[str, Any] | None = None
 
+
+@router.get("")
+async def list_documents(
+    request: Request,
+    limit: int = 20,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    stmt = select(Document).order_by(Document.id.desc()).offset(offset).limit(limit)
+    rows = (await session.execute(stmt)).scalars().all()
+    items: list[dict[str, Any]] = []
+    for d in rows:
+        try:
+            storage_url = request.url_for("get_document_image", doc_id=d.hash_sha256)
+        except Exception:
+            storage_url = d.storage_uri
+        items.append(
+            {
+                "id": d.hash_sha256,
+                "created_at": (d.created_at.isoformat() if d.created_at else None),
+                "status": d.status,
+                "storage_url": str(storage_url),
+            }
+        )
+    return {"items": items, "limit": limit, "offset": offset}
 
 def _local_worm_store() -> Path:
     root = Path(".worm_store")
@@ -41,11 +72,66 @@ def _find_document_path(digest: str) -> Path | None:
     return None
 
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from ..db import get_session
-from ..models import Document, ExtractedField
+def _save_to_supabase(digest: str, filename: str, content: bytes) -> str:
+    """Upload to Supabase storage bucket following a WORM-like path scheme.
+    Returns a public (or signed) URL depending on config.
+    """
+    from supabase import create_client  # type: ignore
+
+    client = create_client(settings.supabase_url, settings.supabase_service_role_key)  # type: ignore[arg-type]
+    bucket = settings.supabase_bucket  # type: ignore[assignment]
+    key = f"{digest[:2]}/{digest[2:4]}/{digest}_{filename}"
+    try:
+        client.storage.from_(bucket).upload(path=key, file=content, file_options={"contentType": "image/jpeg", "upsert": False})
+    except Exception:
+        # Treat conflict/exists as acceptable for idempotency/WORM semantics
+        pass
+    if settings.supabase_storage_public:
+        # Assume public bucket; construct public URL
+        return f"{settings.supabase_url}/storage/v1/object/public/{bucket}/{key}"
+    # Otherwise, return signed URL valid for a day
+    url = client.storage.from_(bucket).create_signed_url(key, 86400)["signedURL"]
+    return url
+
+
+def _save_to_s3(digest: str, filename: str, content: bytes) -> str:
+    """Upload to S3 with Object Lock (if configured). Returns s3:// URI.
+    """
+    import boto3  # type: ignore
+
+    if not settings.s3_bucket:
+        raise RuntimeError("S3 bucket not configured")
+    key = f"{digest[:2]}/{digest[2:4]}/{digest}_{filename}"
+    s3 = boto3.client(
+        "s3",
+        region_name=settings.aws_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
+    extra: dict = {"ContentType": "image/jpeg"}
+    # Optional Object Lock retention in compliance mode
+    if settings.s3_object_lock_retention_days:
+        extra.update(
+            {
+                "ObjectLockMode": "COMPLIANCE",
+                "ObjectLockRetainUntilDate": (datetime.utcnow() + timedelta(days=int(settings.s3_object_lock_retention_days))).isoformat() + "Z",
+            }
+        )
+    try:
+        s3.put_object(Bucket=settings.s3_bucket, Key=key, Body=content, **extra)
+    except Exception:
+        # Treat existing object as success for idempotency
+        pass
+    return f"s3://{settings.s3_bucket}/{key}"
+
+
 from ..ocr import get_ocr_adapter
+from opentelemetry import trace
+import json as _json
+import secrets
+import asyncio
+import time
+from ..metrics_flow import record_duration
 
 
 @router.post("")
@@ -72,22 +158,26 @@ async def upload_document(
     if client_hash and client_hash != digest:
         # Hash mismatch indicates tampering or corruption
         raise HTTPException(status_code=400, detail={"error": "hash_mismatch", "expected": digest, "provided": client_hash})
-    store_dir = _local_worm_store() / digest[:2] / digest[2:4]
-    store_dir.mkdir(parents=True, exist_ok=True)
-    dest = store_dir / f"{digest}_{file.filename}"
-    duplicate = dest.exists()
-    if not duplicate:
-        await file.seek(0)
-        content_bytes = b""
-        with dest.open("wb") as f:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                f.write(chunk)
-                content_bytes += chunk
-        # Write simple OCR sidecar stub (length)
-        (store_dir / f"{digest}.txt").write_text(f"len:{len(content_bytes)}")
+    # Save image either locally (dev) or to Supabase bucket (if configured)
+    await file.seek(0)
+    content_bytes = await file.read()  # single buffer OK for typical receipt images
+    duplicate = False
+    dest: str
+    if settings.supabase_url and settings.supabase_service_role_key and settings.supabase_bucket:
+        dest = _save_to_supabase(digest, file.filename, content_bytes)
+    elif settings.s3_bucket:
+        dest = _save_to_s3(digest, file.filename, content_bytes)
+    else:
+        store_dir = _local_worm_store() / digest[:2] / digest[2:4]
+        store_dir.mkdir(parents=True, exist_ok=True)
+        fpath = store_dir / f"{digest}_{file.filename}"
+        duplicate = fpath.exists()
+        if not duplicate:
+            with fpath.open("wb") as f:
+                f.write(content_bytes)
+            # Write simple OCR sidecar stub (length)
+            (store_dir / f"{digest}.txt").write_text(f"len:{len(content_bytes)}")
+        dest = str(fpath)
     # Persist Document & extracted fields (stub) if not exists
     doc_stmt = select(Document).where(Document.hash_sha256 == digest)
     existing = (await session.execute(doc_stmt)).scalars().first()
@@ -106,13 +196,19 @@ async def upload_document(
         for key, value, conf in (("date", "2025-01-15", 0.92), ("total", "123.45", 0.97), ("vendor", "Kaffe AB", 0.88)):
             session.add(ExtractedField(document_id=doc.id, key=key, value=value, confidence=conf))
         await session.commit()
+    else:
+        duplicate = True
     # Return pseudo-id = hash and duplicate flag
-    return {"documentId": digest, "storagePath": str(dest), "duplicate": duplicate}
+    return {"documentId": digest, "storagePath": dest, "duplicate": duplicate}
 
 
 @router.get("/{doc_id}")
-async def get_document(doc_id: str, session: AsyncSession = Depends(get_session)) -> dict:
-    storage_url = f"/documents/{doc_id}/image"
+async def get_document(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> dict:
+    # Build absolute URL so web clients don't depend on their own origin
+    try:
+        storage_url = request.url_for("get_document_image", doc_id=doc_id)
+    except Exception:
+        storage_url = f"{str(request.base_url).rstrip('/')}/documents/{doc_id}/image"
     # Try load from DB
     doc_stmt = select(Document).where(Document.hash_sha256 == doc_id)
     d = (await session.execute(doc_stmt)).scalars().first()
@@ -154,13 +250,106 @@ async def get_document(doc_id: str, session: AsyncSession = Depends(get_session)
     }
 
 
-@router.get("/{doc_id}/image")
-async def get_document_image(doc_id: str) -> FileResponse:
+@router.get("/{doc_id}/image", name="get_document_image")
+async def get_document_image(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+    inm = request.headers.get("if-none-match")
+    if inm and inm.strip() == f'W/"{doc_id}"':
+        return Response(status_code=304)
     path = _find_document_path(doc_id)
-    if path is None or not path.exists():
-        # Return 404-like behavior by raising; but for brevity serve empty
-        raise FileNotFoundError("document image not found")
-    return FileResponse(path)
+    if path is not None and path.exists():
+        resp = FileResponse(path, media_type="image/jpeg")
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        resp.headers["ETag"] = f'W/"{doc_id}"'
+        return resp
+
+    # Fallback: proxy from remote storage (e.g., Supabase) if present in DB
+    d = (await session.execute(select(Document).where(Document.hash_sha256 == doc_id))).scalars().first()
+    if d and (d.storage_uri or "").startswith("http"):
+        try:
+            import httpx  # type: ignore
+
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.get(d.storage_uri)
+                if resp.status_code == 200 and resp.content:
+                    out = StreamingResponse(BytesIO(resp.content), media_type="image/jpeg")
+                    out.headers["Cache-Control"] = "public, max-age=86400"
+                    out.headers["ETag"] = f'W/"{doc_id}"'
+                    return out
+        except Exception:
+            pass
+    if d and (d.storage_uri or "").startswith("s3://"):
+        try:
+            import boto3  # type: ignore
+
+            s3uri = d.storage_uri[5:]
+            bucket, key = s3uri.split("/", 1)
+            s3 = boto3.client(
+                "s3",
+                region_name=settings.aws_region,
+                aws_access_key_id=settings.aws_access_key_id,
+                aws_secret_access_key=settings.aws_secret_access_key,
+            )
+            obj = s3.get_object(Bucket=bucket, Key=key)
+            data = obj["Body"].read()
+            out = StreamingResponse(BytesIO(data), media_type="image/jpeg")
+            out.headers["Cache-Control"] = "public, max-age=86400"
+            out.headers["ETag"] = f'W/"{doc_id}"'
+            return out
+        except Exception:
+            pass
+    raise HTTPException(status_code=404, detail="document image not found")
+
+
+@router.get("/{doc_id}/thumbnail")
+async def get_document_thumbnail(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> StreamingResponse:
+    inm = request.headers.get("if-none-match")
+    if inm and inm.strip() == f'W/"{doc_id}/thumb"':
+        return Response(status_code=304)
+    path = _find_document_path(doc_id)
+    source_bytes: bytes | None = None
+    if path is not None and path.exists():
+        source_bytes = path.read_bytes()
+    else:
+        d = (await session.execute(select(Document).where(Document.hash_sha256 == doc_id))).scalars().first()
+        if d and (d.storage_uri or "").startswith("http"):
+            try:
+                import httpx  # type: ignore
+
+                async with httpx.AsyncClient(timeout=20) as client:
+                    resp = await client.get(d.storage_uri)
+                    if resp.status_code == 200 and resp.content:
+                        source_bytes = bytes(resp.content)
+            except Exception:
+                source_bytes = None
+        elif d and (d.storage_uri or "").startswith("s3://"):
+            try:
+                import boto3  # type: ignore
+
+                s3uri = d.storage_uri[5:]
+                bucket, key = s3uri.split("/", 1)
+                s3 = boto3.client(
+                    "s3",
+                    region_name=settings.aws_region,
+                    aws_access_key_id=settings.aws_access_key_id,
+                    aws_secret_access_key=settings.aws_secret_access_key,
+                )
+                obj = s3.get_object(Bucket=bucket, Key=key)
+                source_bytes = obj["Body"].read()
+            except Exception:
+                source_bytes = None
+    if not source_bytes:
+        raise HTTPException(status_code=404, detail="document image not found")
+    # Generate a small thumbnail (max 320px on the long edge)
+    with Image.open(BytesIO(source_bytes)) as img:
+        img = img.convert("RGB")
+        img.thumbnail((320, 320))
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        buf.seek(0)
+        out = StreamingResponse(buf, media_type="image/jpeg")
+        out.headers["Cache-Control"] = "public, max-age=86400"
+        out.headers["ETag"] = f'W/"{doc_id}/thumb"'
+        return out
 
 
 @router.post("/{doc_id}/process-ocr")
@@ -168,9 +357,42 @@ async def process_document_ocr(doc_id: str, session: AsyncSession = Depends(get_
     path = _find_document_path(doc_id)
     if path is None or not path.exists():
         raise HTTPException(status_code=404, detail="document not found")
-    adapter = get_ocr_adapter()
     image_bytes = path.read_bytes()
-    ocr_result = await adapter.extract(image_bytes)
+    tracer = trace.get_tracer("bertil.api")
+    with tracer.start_as_current_span("ocr.process") as span:  # type: ignore[call-arg]
+        span.set_attribute("document.id", doc_id)
+        span.set_attribute("image.bytes", len(image_bytes))
+        t0 = time.perf_counter()
+        if settings.ocr_queue_url:
+            # Enqueue to Redis and poll result briefly (MVP)
+            import redis.asyncio as redis  # type: ignore
+            r = redis.from_url(settings.ocr_queue_url, decode_responses=False)
+            job_id = f"job-{secrets.token_hex(8)}"
+            payload = {
+                "id": job_id,
+                "hex": image_bytes.hex(),
+            }
+            await r.rpush("ocr:queue", _json.dumps(payload).encode("utf-8"))
+            # Wait up to 5s for result
+            result = None
+            for _ in range(50):
+                raw = await r.hget("ocr:results", job_id)
+                if raw:
+                    result = _json.loads(raw.decode("utf-8"))
+                    break
+                await asyncio.sleep(0.1)
+            if not result:
+                raise HTTPException(status_code=504, detail="ocr timeout")
+            from .ocr import OcrBox, OcrResult  # local import to avoid cycle at module top
+            boxes = [OcrBox(**b) for b in result.get("boxes", [])]
+            extracted = [tuple(x) for x in result.get("extracted_fields", [])]
+            ocr_result = OcrResult(text=result.get("text", ""), boxes=boxes, extracted_fields=extracted)
+        else:
+            adapter = get_ocr_adapter()
+            span.set_attribute("ocr.provider", getattr(type(adapter), "__name__", "unknown"))
+            ocr_result = await adapter.extract(image_bytes)
+        dt = time.perf_counter() - t0
+        record_duration(dt)
 
     # Update DB
     doc_stmt = select(Document).where(Document.hash_sha256 == doc_id)

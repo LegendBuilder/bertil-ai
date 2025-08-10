@@ -24,6 +24,20 @@ class ReportsApi {
     );
   }
 
+  Future<Map<String, dynamic>> getVatReport({required int year, required int month}) async {
+    final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
+    final res = await _dio.get('/reports/vat', queryParameters: {'period': period, 'format': 'json'});
+    return (res.data as Map<String, dynamic>);
+  }
+
+  Future<Map<String, num>> getVatDeclaration({required int year, required int month}) async {
+    final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
+    final res = await _dio.get('/reports/vat/declaration', queryParameters: {'period': period});
+    final data = res.data as Map<String, dynamic>;
+    final boxes = (data['boxes'] as Map).map((k, v) => MapEntry(k.toString(), (v as num)));
+    return boxes;
+  }
+
   Uri sieExportUrl(int year) {
     final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
     return Uri.parse('$base/exports/sie?year=$year');
@@ -32,6 +46,30 @@ class ReportsApi {
   Uri verificationsPdfUrl(int year) {
     final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
     return Uri.parse('$base/exports/verifications.pdf?year=$year');
+  }
+
+  Uri vatReportPdfUrl({required int year, required int month}) {
+    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
+    return Uri.parse('$base/reports/vat?period=$period&format=pdf');
+  }
+
+  Uri vatSkvFileUrl({required int year, required int month}) {
+    final base = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+    final period = '${year.toString().padLeft(4, '0')}-${month.toString().padLeft(2, '0')}';
+    return Uri.parse('$base/reports/vat/declaration/file?period=$period');
+  }
+
+  Future<void> importSie({required List<int> bytes, required String filename}) async {
+    // Use standard MediaType for Dio contentType
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: Headers.jsonMimeType == null ? null : Headers.contentTypeHeader as dynamic,
+      ),
+    });
+    await _dio.post('/imports/sie', data: form);
   }
 }
 

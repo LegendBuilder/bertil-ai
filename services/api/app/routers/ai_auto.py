@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
-from ..ai import suggest_account_and_vat, build_entries
+from ..ai import suggest_account_and_vat, build_entries, build_entries_with_code
 from ..routers.verifications import VerificationIn, EntryIn, create_verification  # reuse model & logic
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -27,16 +27,21 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
 
-    decision = suggest_account_and_vat(vendor, total)
-    entries = build_entries(total, decision.expense_account, decision.vat_rate)
+    decision = await suggest_account_and_vat(vendor, total, session)
+    vat_code = body.get("vat_code")
+    if vat_code:
+        entries = build_entries_with_code(total, decision.expense_account, vat_code)
+    else:
+        entries = build_entries(total, decision.expense_account, decision.vat_rate)
     vin = VerificationIn(
         org_id=org_id,
         date=dt,
         total_amount=total,
         currency="SEK",
-        vat_amount=None,
+        vat_amount=round(total - (total / (1.0 + decision.vat_rate)), 2) if (not vat_code and decision.vat_rate > 0) else None,
         counterparty=vendor,
         document_link=(f"/documents/{document_id}" if document_id else None),
+        vat_code=vat_code,
         entries=[EntryIn(**e) for e in entries],
     )
     # Delegate to existing create_verification route

@@ -4,6 +4,9 @@ import '../data/ledger_api.dart';
 import '../../documents/provider/document_list_providers.dart';
 import '../domain/next_action.dart';
 
+/// Local, ephemeral set of dismissed compliance flags (by rule_code) for optimistic UI.
+final dismissedFlagsProvider = StateProvider<Set<String>>((ref) => <String>{});
+
 final trustSummaryProvider = FutureProvider<TrustSummary>((ref) async {
   final api = ref.watch(ledgerApiProvider);
   final now = DateTime.now();

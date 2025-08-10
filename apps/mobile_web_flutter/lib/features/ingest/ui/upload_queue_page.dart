@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../shared/services/queue/queue_service.dart';
 
@@ -8,6 +9,11 @@ class UploadQueuePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (kIsWeb) {
+      return const Scaffold(
+        body: Center(child: Text('Offline-kö är inte tillgänglig på webben')),
+      );
+    }
     final queue = ref.watch(queueServiceProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Uppladdningskö')),

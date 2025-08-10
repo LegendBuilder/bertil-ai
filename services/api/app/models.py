@@ -7,6 +7,10 @@ from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric,
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
+try:
+    from pgvector.sqlalchemy import Vector  # type: ignore
+except Exception:  # pragma: no cover
+    Vector = None  # type: ignore
 
 
 class User(Base):
@@ -75,6 +79,7 @@ class Verification(Base):
     total_amount: Mapped[float] = mapped_column(Numeric(14, 2))
     currency: Mapped[str] = mapped_column(String(3), default="SEK")
     vat_amount: Mapped[Optional[float]] = mapped_column(Numeric(14, 2))
+    vat_code: Mapped[Optional[str]] = mapped_column(String(20))
     counterparty: Mapped[Optional[str]] = mapped_column(String(200))
     document_link: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -115,4 +120,62 @@ class AuditLog(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     signature: Mapped[Optional[str]] = mapped_column(String(128))
 
+
+class VendorEmbedding(Base):
+    __tablename__ = "vendor_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    # Use pgvector's Vector type if available; fall back to String to avoid import-time errors
+    if Vector:
+        embedding = mapped_column(Vector(16))  # type: ignore[assignment]
+    else:  # pragma: no cover
+        embedding: Mapped[str] = mapped_column(String(400))
+    suggested_account: Mapped[str | None] = mapped_column(String(10))
+    vat_rate: Mapped[float | None] = mapped_column(Numeric(5, 2))
+
+
+class VatCode(Base):
+    __tablename__ = "vat_codes"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    description: Mapped[str] = mapped_column(String(200))
+    rate: Mapped[float] = mapped_column(Numeric(5, 2))
+    reverse_charge: Mapped[bool] = mapped_column()
+
+
+class BankTransaction(Base):
+    __tablename__ = "bank_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    import_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    date: Mapped[datetime] = mapped_column(Date)
+    amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    currency: Mapped[str] = mapped_column(String(3), default="SEK")
+    description: Mapped[str] = mapped_column(String(500))
+    counterparty_ref: Mapped[str | None] = mapped_column(String(200))
+    matched_verification_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PeriodLock(Base):
+    __tablename__ = "period_locks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(Integer, index=True)
+    start_date: Mapped[datetime] = mapped_column(Date)
+    end_date: Mapped[datetime] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ReviewTask(Base):
+    __tablename__ = "review_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(Integer, index=True)
+    type: Mapped[str] = mapped_column(String(40))  # e.g., autopost|settle|vat
+    payload_json: Mapped[str] = mapped_column(Text)  # JSON payload
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|done|cancelled
+    confidence: Mapped[float] = mapped_column(Numeric(5, 2), default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

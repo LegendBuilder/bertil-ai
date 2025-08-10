@@ -1,5 +1,5 @@
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
 
@@ -57,12 +57,10 @@ class NetworkService {
   }
 
   static String _resolveBaseUrl() {
-    // Allow override via --dart-define
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (envUrl.isNotEmpty) return envUrl;
-    // Default per platform
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-    return 'http://localhost:8000';
+    // Force IPv4 loopback to avoid ::1 vs 127.0.0.1 socket issues on Windows when server binds to 127.0.0.1
+    return 'http://127.0.0.1:8000';
   }
 
   bool _isRetriable(DioException e) {
@@ -93,5 +91,6 @@ class NetworkIssue {
   final String message;
   final int statusCode;
 }
+
 
 

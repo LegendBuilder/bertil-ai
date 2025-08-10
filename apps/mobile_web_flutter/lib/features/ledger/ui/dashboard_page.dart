@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../features/auth/provider/auth_providers.dart';
 import '../provider/ledger_providers.dart';
+import '../../inbox/provider/inbox_providers.dart';
+import 'package:flutter/services.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -9,13 +12,43 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
+    final pendingCount = ref.watch(pendingTasksCountProvider).maybeWhen(orElse: () => 0, data: (n) => n);
     return Scaffold(
       appBar: AppBar(title: const Text('Hem')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: Shortcuts(
+        shortcuts: <LogicalKeySet, Intent>{
+          LogicalKeySet(LogicalKeyboardKey.keyG): const ActivateIntent(),
+        },
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (intent) {
+              final keys = RawKeyboard.instance.keysPressed;
+              if (keys.contains(LogicalKeyboardKey.keyG)) {
+                if (context.mounted) context.go('/inbox');
+              }
+              return null;
+            }),
+          },
+          child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (pendingCount > 0)
+              Card(
+                color: Colors.blue.shade50,
+                child: ListTile(
+                  leading: const Icon(Icons.inbox_outlined, color: Colors.blue),
+                  title: Text('Granska ($pendingCount)', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Autopilot har förslag som väntar på din bekräftelse'),
+                  trailing: ElevatedButton(
+                    onPressed: () => context.go('/inbox'),
+                    child: const Text('Öppna Inbox (G)'),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
             if (!auth.isAuthenticated)
               const MaterialBanner(
                 content: Text('Ej inloggad – logga in för att spara och bokföra.'),
@@ -37,7 +70,8 @@ class DashboardPage extends ConsumerWidget {
                       : t.score >= 50
                           ? '⚠️ ${t.flags.length} saker kvar'
                           : '❌ blockerat';
-                  final topFlags = t.flags.take(3).toList();
+                  final dismissed = ref.watch(dismissedFlagsProvider);
+                  final topFlags = t.flags.where((f) => !dismissed.contains(f['rule_code'] as String)).take(3).toList();
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -48,19 +82,54 @@ class DashboardPage extends ConsumerWidget {
                       ]),
                       const SizedBox(height: 8),
                       if (topFlags.isNotEmpty)
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             for (final f in topFlags)
-                              Chip(
-                                backgroundColor: (f['severity'] == 'error')
-                                    ? Colors.red.shade100
-                                    : (f['severity'] == 'warning')
-                                        ? Colors.orange.shade100
-                                        : Colors.green.shade100,
-                                label: Text(f['message'] as String),
-                              )
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Chip(
+                                      backgroundColor: (f['severity'] == 'error')
+                                          ? Colors.red.shade100
+                                          : (f['severity'] == 'warning')
+                                              ? Colors.orange.shade100
+                                              : Colors.green.shade100,
+                                      label: Text(f['message'] as String),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if ((f['rule_code'] as String).startsWith('R-011'))
+                                      OutlinedButton(
+                                        onPressed: () {
+                                          // Optimistic dismissal and undo for demo
+                                          final code = f['rule_code'] as String;
+                                          ref.read(dismissedFlagsProvider.notifier).state = {...dismissed, code};
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: const Text('Datum korrigerat (demo)'),
+                                              action: SnackBarAction(
+                                                label: 'Ångra',
+                                                onPressed: () => ref.read(dismissedFlagsProvider.notifier).state = {...dismissed}..remove(code),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Korrigera datum'),
+                                      )
+                                    else if ((f['rule_code'] as String).startsWith('R-001'))
+                                      OutlinedButton(
+                                        onPressed: () {
+                                          context.go('/documents');
+                                        },
+                                        child: const Text('Koppla underlag'),
+                                      )
+                                    else
+                                      const SizedBox.shrink(),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                     ],
@@ -77,7 +146,7 @@ class DashboardPage extends ConsumerWidget {
                   title: Text(next.title),
                   subtitle: Text(next.subtitle),
                   trailing: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pushNamed(next.route),
+                    onPressed: () => context.go(next.route),
                     child: Text(next.ctaLabel),
                   ),
                 ),
@@ -97,31 +166,26 @@ class DashboardPage extends ConsumerWidget {
                 ],
               ),
             ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).pushNamed('/capture'),
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Fota kvitto'),
-            ),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              ElevatedButton.icon(
+                onPressed: () => context.go('/capture'),
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: const Text('Fota kvitto'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => context.go('/documents'),
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Ladda upp'),
+              ),
+            ]),
             const SizedBox(height: 12),
             if (auth.user != null)
               Text('Välkommen, ${auth.user!['name'] ?? 'användare'}', style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
+          ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Hem'),
-          NavigationDestination(icon: Icon(Icons.camera_alt_outlined), label: 'Fota'),
-          NavigationDestination(icon: Icon(Icons.description_outlined), label: 'Dokument'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Rapporter'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Konto'),
-        ],
-        onDestinationSelected: (idx) {
-          if (idx == 1) {
-            Navigator.of(context).pushNamed('/capture');
-          }
-        },
-        selectedIndex: 0,
+          ),
+        ),
       ),
     );
   }

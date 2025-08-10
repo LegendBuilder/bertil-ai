@@ -2,8 +2,10 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic==2.8.2
 python-multipart==0.0.9
-httpx==0.27.0
+# httpx version pinned to satisfy supabase 2.4.0 constraint (<0.26)
+httpx>=0.24,<0.26
 SQLAlchemy==2.0.36
+psycopg[binary]>=3.1,<4
 alembic==1.13.3
 aiosqlite==0.20.0
 pydantic-settings==2.2.1
@@ -17,5 +19,14 @@ boto3==1.35.23
 pytesseract==0.3.10
 Pillow==10.4.0
 reportlab==4.2.2
+supabase==2.4.0
+pytest==8.3.2
+anyio==4.4.0
+redis==5.0.7
+pgvector==0.2.5
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+sentence-transformers==2.7.0
+rapidfuzz==3.9.6
 
 

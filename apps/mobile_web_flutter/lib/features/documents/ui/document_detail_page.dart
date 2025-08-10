@@ -1,5 +1,7 @@
+﻿import 'package:bertil_mobile_web_flutter/shared/services/network.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../provider/document_providers.dart';
 import '../provider/document_list_providers.dart';
@@ -7,6 +9,7 @@ import '../domain/document.dart';
 import '../provider/explainability_provider.dart';
 import '../../ingest/data/ingest_api.dart';
 import '../../ledger/data/ledger_api.dart';
+import '../../ledger/data/vat_api.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -30,16 +33,17 @@ class DocumentDetailPage extends ConsumerWidget {
                   flex: 3,
                   child: Stack(
                     children: [
-                      Semantics(
-                        label: 'Dokumentbild',
-                        child: Positioned.fill(
-                          child: Image.network(
-                            doc.imageUrl,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas')),
-                          ),
-                        ),
-                      ),
+                       Positioned.fill(
+                         child: Semantics(
+                           label: 'Dokumentbild',
+                           image: true,
+                           child: Image.network(
+                             doc.imageUrl,
+                             fit: BoxFit.contain,
+                             errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas')),
+                           ),
+                         ),
+                       ),
                       ...doc.boxes.map((b) {
                         return Positioned(
                           left: b.x * maxW,
@@ -92,6 +96,16 @@ class DocumentDetailPage extends ConsumerWidget {
                             ),
                           ),
                         const SizedBox(height: 16),
+                        const Text('Moms-kod'),
+                        FutureBuilder<List<VatCodeItem>>(
+                          future: VatApi(NetworkService().client).listCodes(),
+                          builder: (context, snap) {
+                            if (!snap.hasData) return const LinearProgressIndicator();
+                            final codes = snap.data!;
+                            return _VatPicker(codes: codes);
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         const Text('Varför valde vi detta?'),
                         const SizedBox(height: 8),
                         Builder(builder: (context) {
@@ -100,7 +114,7 @@ class DocumentDetailPage extends ConsumerWidget {
                         }),
                         const Spacer(),
                         Wrap(spacing: 8, runSpacing: 8, children: [
-                          ElevatedButton(
+                          OutlinedButton(
                             onPressed: () {
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.waitingInfo);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som "Väntar info"')));
@@ -124,24 +138,35 @@ class DocumentDetailPage extends ConsumerWidget {
                                 orElse: () => doc.extractedFields.first,
                               ).value;
                               final api = IngestApi(NetworkService().client);
-                              final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor);
+                              final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor, vatCode: _VatPickerState.lastSelectedCode);
                               // On success, mark doc as done
                               // ignore: use_build_context_synchronously
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);
                               // ignore: use_build_context_synchronously
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bokfört ✅ (V#${res['id']})')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Bokfört ✅ (V#${res['id']})'),
+                                  action: SnackBarAction(
+                                    label: 'Ångra',
+                                    onPressed: () {
+                                      // Demo-only: revert to waitingInfo
+                                      ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.waitingInfo);
+                                    },
+                                  ),
+                                ),
+                              );
                             },
-                            child: const Text('Bokför automatiskt'),
+                            child: const Text('Bokför'),
                           ),
                           OutlinedButton(
                             onPressed: () async {
                               final api = LedgerApi(NetworkService().client);
-                              final r = await api._dio.get('/verifications/by-document/$id');
+                              final r = await NetworkService().client.get('/verifications/by-document/$id');
                               final data = r.data as Map<String, dynamic>;
                               final verId = data['id'] as int?;
                               if (verId != null) {
                                 if (context.mounted) {
-                                  Navigator.of(context).pushNamed('/verifications');
+                                  context.go('/verifications');
                                 }
                               } else {
                                 if (context.mounted) {
@@ -172,5 +197,39 @@ class DocumentDetailPage extends ConsumerWidget {
     );
   }
 }
+
+
+class _VatPicker extends StatefulWidget {
+  const _VatPicker({required this.codes});
+  final List<VatCodeItem> codes;
+  @override
+  State<_VatPicker> createState() => _VatPickerState();
+}
+
+class _VatPickerState extends State<_VatPicker> {
+  static String? lastSelectedCode;
+  String? _code;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      children: widget.codes.take(8).map((c) {
+        final selected = _code == c.code;
+        return ChoiceChip(
+          label: Text(c.code),
+          selected: selected,
+          onSelected: (v) {
+            setState(() {
+              _code = v ? c.code : null;
+              lastSelectedCode = _code;
+            });
+          },
+        );
+      }).toList(),
+    );
+  }
+}
+
 
 

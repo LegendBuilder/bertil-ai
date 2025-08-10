@@ -13,6 +13,7 @@ dependencies:
   dio: ^5.6.0
   intl: ^0.19.0
   url_launcher: ^6.3.0
+  # flutter_dropzone temporarily removed due to web plugin version conflicts
   # Declared for future use (not imported in MVP to keep tests simple)
   camera: ^0.11.0+2
   image_picker: ^1.1.2
@@ -23,6 +24,7 @@ dependencies:
   isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.4
   image: ^4.2.0
+  shared_preferences: ^2.3.2
   # isar packages reserved for offline queue in later passes
   # isar: ^3.1.0+1
   # isar_flutter_libs: ^3.1.0+1

@@ -6,13 +6,13 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..audit import append_audit_event
 from ..compliance import run_verification_rules, persist_flags
-from ..models import Entry, Verification, AuditLog
+from ..models import Entry, Verification, AuditLog, PeriodLock
 
 
 router = APIRouter(prefix="/verifications", tags=["ledger"])
@@ -32,6 +32,7 @@ class VerificationIn(BaseModel):
     total_amount: float
     currency: str = "SEK"
     vat_amount: Optional[float] = None
+    vat_code: Optional[str] = None
     counterparty: Optional[str] = None
     document_link: Optional[str] = None
     entries: List[EntryIn] = Field(default_factory=list)
@@ -48,6 +49,17 @@ async def create_verification(
     body: VerificationIn, session: AsyncSession = Depends(get_session)
 ) -> dict:
     # Append-only: compute next immutable_seq per org
+    # Enforce period locks: disallow new postings within locked windows for org
+    lock_stmt = select(PeriodLock).where(
+        and_(
+            PeriodLock.org_id == body.org_id,
+            PeriodLock.start_date <= body.date,
+            PeriodLock.end_date >= body.date,
+        )
+    )
+    locked = (await session.execute(lock_stmt)).scalars().first()
+    if locked:
+        raise HTTPException(status_code=403, detail="period is locked for selected date")
     next_seq_stmt = select(func.coalesce(func.max(Verification.immutable_seq), 0)).where(
         Verification.org_id == body.org_id
     )
@@ -62,6 +74,7 @@ async def create_verification(
         total_amount=body.total_amount,
         currency=body.currency,
         vat_amount=body.vat_amount,
+        vat_code=(body.vat_code or None),
         counterparty=body.counterparty,
         document_link=body.document_link,
         created_at=datetime.utcnow(),
@@ -271,3 +284,45 @@ async def correct_verification_document(ver_id: int, body: CorrectionDocumentIn,
     corrected_created = await create_verification(vin, session)
     return {"corrected": corrected_created}
 
+
+@router.get("/open-items")
+async def list_open_items(
+    type: str | None = None,  # "ar" or "ap" or None for both
+    counterparty: str | None = None,
+    min_amount: float = 0.01,
+    limit: int = 100,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    out: list[dict] = []
+    # Accounts: AR = 1510*, AP = 2440*
+    if type in (None, "ar"):
+        stmt_ar = (
+            select(Verification.counterparty, func.sum(func.coalesce(Entry.debit, 0) - func.coalesce(Entry.credit, 0)))
+            .join(Verification, Verification.id == Entry.verification_id)
+            .where(Entry.account.like("1510%"))
+            .group_by(Verification.counterparty)
+            .order_by(func.sum(func.coalesce(Entry.debit, 0) - func.coalesce(Entry.credit, 0)).desc())
+        )
+        if counterparty:
+            stmt_ar = stmt_ar.where(Verification.counterparty.ilike(f"%{counterparty}%"))
+        rows_ar = (await session.execute(stmt_ar.limit(limit))).all()
+        for cp, amt in rows_ar:
+            val = float(amt or 0.0)
+            if val >= min_amount:
+                out.append({"counterparty": cp, "type": "ar", "open_amount": round(val, 2)})
+    if type in (None, "ap"):
+        stmt_ap = (
+            select(Verification.counterparty, func.sum(func.coalesce(Entry.credit, 0) - func.coalesce(Entry.debit, 0)))
+            .join(Verification, Verification.id == Entry.verification_id)
+            .where(Entry.account.like("2440%"))
+            .group_by(Verification.counterparty)
+            .order_by(func.sum(func.coalesce(Entry.credit, 0) - func.coalesce(Entry.debit, 0)).desc())
+        )
+        if counterparty:
+            stmt_ap = stmt_ap.where(Verification.counterparty.ilike(f"%{counterparty}%"))
+        rows_ap = (await session.execute(stmt_ap.limit(limit))).all()
+        for cp, amt in rows_ap:
+            val = float(amt or 0.0)
+            if val >= min_amount:
+                out.append({"counterparty": cp, "type": "ap", "open_amount": round(val, 2)})
+    return {"items": out[:limit]}

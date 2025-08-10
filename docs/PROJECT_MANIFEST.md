@@ -79,15 +79,15 @@ Backend (API & AI)
 
     Search: OpenSearch/Elasticsearch (avtal/underlag)
 
-    OCR: Google Vision / AWS Textract, fallback Tesseract
+    OCR: Tesseract (swe+eng) med förbehandling; fallback PaddleOCR. Vision/Textract valfritt.
 
     AI-pipelines: fältextraktion, BAS-kontomappning, momslogik, avvikelsedetektor
 
     Rules/Compliance: Python (Pydantic + rules) eller Nest service
 
-    Storage: S3-kompatibel med Object Lock (WORM), retention ≥ 7 år
+    Storage: S3 Object Lock (WORM) för original, retention ≥ 7 år. Supabase Storage valfritt för tumnaglar/dev.
 
-    Auth/Sign: BankID via broker (ex. Signicat)
+    Auth/Sign: BankID via broker (ex. Signicat); OIDC/SAML via SSO möjlig i framtiden.
 
     Exporter: SIE, XBRL/ivis, PDF verifikationslistor
 
@@ -233,7 +233,7 @@ Rapporter
 
     Årsavslut: checklista (verifikationer klara, periodisering klar, e-sign klar).
 
-    Export: SIE / PDF / XBRL (“Ladda ner bokföringsfil”).
+    Export: SIE / PDF / XBRL (“Ladda ner bokföringsfil”). Import: SIE (filväljare i Rapporter). Momsfil (SKV) med en knapp.
 
 Microcopy (svensk, varm + rak)
 
@@ -259,7 +259,7 @@ Tillgänglighet & Hastighet
 
     WCAG 2.1 AA, fokusindikatorer, labels.
 
-    Kamera→Bokfört < 20s i 4G, lazy-load, 60 fps scroll.
+    Kamera→Bokfört < 20s i 4G, lazy-load, 60 fps scroll. Kortkommandon: “/” sök (Bank), “A” bulkacceptera hint, “R” uppdatera, “V/E/P” snabb-exports i Rapporter, “?” hjälp‑overlay på Bank/Rapporter/Dokument/Inbox, “G” genväg till Inbox från Hem. Fokusordning genomgående.
 
     Stora touchytor, svep för Godkänn/Parkera.
 
@@ -315,6 +315,14 @@ Exports
     GET /exports/sie?year=… → .se file
 
     GET /reports/vat?period=… → PDF/JSON
+
+    System & Storage
+    
+    GET /documents                 → list (limit/offset)
+    GET /metrics/health            → { ok }
+    GET /metrics/ocr               → { queue_depth, provider, queued }
+    GET /storage/worm/{docId}      → { backend, retention/objectLock/… }
+    POST /admin/seed/vendors       → seed vendor embeddings (hidden in schema)
 
     POST /bolagsverket/submit → { receipt, status }
 

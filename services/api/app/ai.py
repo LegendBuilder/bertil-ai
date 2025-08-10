@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 
+from .vendor_embeddings import embed_vendor_name
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from .models import VendorEmbedding
 
 @dataclass
 class MappingDecision:
@@ -11,8 +15,37 @@ class MappingDecision:
     reason: str
 
 
-def suggest_account_and_vat(vendor: str | None, total_amount: float) -> MappingDecision:
+async def _lookup_vendor_embedding(session: AsyncSession, vendor: str) -> MappingDecision | None:
+    vec = embed_vendor_name(vendor)
+    # Simple nearest neighbor (cosine via dot product assuming normalized embeddings)
+    # If pgvector is available we could use <-> operator; here we fetch small set
+    rows = (await session.execute(select(VendorEmbedding))).scalars().all()
+    best = None
+    best_score = -1.0
+    for r in rows:
+        if isinstance(r.embedding, (list, tuple)):
+            emb = list(map(float, r.embedding))
+        else:
+            try:
+                emb = [float(x) for x in str(r.embedding).split(',')]
+            except Exception:
+                continue
+        score = sum(a*b for a, b in zip(vec, emb))
+        if score > best_score:
+            best_score = score
+            best = r
+    if best and best.suggested_account and best.vat_rate is not None:
+        return MappingDecision(best.suggested_account, float(best.vat_rate), f"Embeddings träff ({best.name})")
+    return None
+
+
+async def suggest_account_and_vat(vendor: str | None, total_amount: float, session: AsyncSession | None = None) -> MappingDecision:
     v = (vendor or "").lower()
+    # Embedding-based suggestion when session provided and we have a dictionary
+    if session is not None and vendor:
+        hit = await _lookup_vendor_embedding(session, vendor)
+        if hit:
+            return hit
     if any(k in v for k in ["kaffe", "café", "cafe", "fika", "lunch"]):
         return MappingDecision("5811", 0.12, "Leverantör antyder representation (12% moms)")
     if "taxi" in v:
@@ -36,4 +69,28 @@ def build_entries(total_amount: float, expense_account: str, vat_rate: float) ->
         {"account": "1910", "debit": 0.0, "credit": round(total_amount, 2)},
     ]
 
+
+def build_entries_with_code(total_amount: float, expense_account: str, vat_code: str | None) -> list[dict]:
+    """Build entries based on a VAT code. Supports:
+    - SE25/SE12/SE06: normal purchase with ingående moms on 2641
+    - RC25 / EU-RC-SERV: reverse charge (credit 2615, debit 2645) on base = total_amount
+    Fallback to 25% if missing/unknown.
+    """
+    code = (vat_code or "SE25").upper()
+    if code.startswith("RC") or code.startswith("EU-RC"):
+        rate = 0.25
+        base = round(total_amount, 2)
+        vat = round(base * rate, 2)
+        return [
+            {"account": expense_account, "debit": base, "credit": 0.0},
+            {"account": "2615", "debit": 0.0, "credit": vat},  # Utgående moms, omvänd
+            {"account": "2645", "debit": vat, "credit": 0.0},  # Ingående moms, omvänd
+            {"account": "1910", "debit": 0.0, "credit": base},
+        ]
+    rate = 0.25
+    if code == "SE12":
+        rate = 0.12
+    elif code == "SE06":
+        rate = 0.06
+    return build_entries(total_amount, expense_account, rate)
 

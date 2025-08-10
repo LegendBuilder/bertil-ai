@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/services/network.dart';
+import '../domain/document.dart';
 
 class OcrBox {
   OcrBox({required this.x, required this.y, required this.w, required this.h, required this.label});
@@ -38,6 +39,18 @@ class DocumentsApi {
   DocumentsApi(this._dio);
   final Dio _dio;
 
+  Future<List<DocumentSummary>> listDocuments({int limit = 20, int offset = 0}) async {
+    final res = await _dio.get('/documents', queryParameters: {'limit': limit, 'offset': offset});
+    final items = (res.data['items'] as List).cast<Map<String, dynamic>>();
+    return items
+        .map((m) => DocumentSummary(
+              id: m['id'] as String,
+              uploadedAt: DateTime.tryParse((m['created_at'] ?? '') as String) ?? DateTime.now(),
+              status: DocumentStatus.newDoc,
+            ))
+        .toList();
+  }
+
   Future<DocumentDetail> getDocument(String id) async {
     final res = await _dio.get('/documents/$id');
     final data = res.data as Map<String, dynamic>;
@@ -65,9 +78,18 @@ class DocumentsApi {
       id: meta['id'] as String,
       ocrText: (ocr['text'] ?? '') as String,
       boxes: boxes,
-      imageUrl: (meta['storageUrl'] ?? '') as String,
+      imageUrl: _resolveAbsoluteUrl((meta['storageUrl'] ?? '') as String),
       extractedFields: extracted,
     );
+  }
+
+  String _resolveAbsoluteUrl(String storageUrl) {
+    if (storageUrl.startsWith('http')) return storageUrl;
+    final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    if (storageUrl.startsWith('/')) {
+      return '$base$storageUrl';
+    }
+    return '$base/$storageUrl';
   }
 }
 

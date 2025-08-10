@@ -30,6 +30,12 @@ class LoginPage extends ConsumerWidget {
               icon: const Icon(Icons.login),
               label: const Text('Starta BankID', semanticsLabel: 'Starta BankID'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: state.isLoading ? null : () => ctrl.loginDemo(),
+              icon: const Icon(Icons.flight_takeoff),
+              label: const Text('Testa demo (utan BankID)'),
+            ),
             const SizedBox(height: 16),
             if (state.message != null) Text(state.message!),
             const Spacer(),

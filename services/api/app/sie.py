@@ -48,3 +48,43 @@ async def generate_sie(session: AsyncSession, year: int) -> str:
     return "\n".join(lines) + "\n"
 
 
+def parse_sie(content: str) -> list[dict]:
+    """Very small SIE parser (VER/TRANS only) returning a list of verifications.
+
+    Output format: [{"date": YYYY-MM-DD, "text": str, "entries": [{account, amount}...]}]
+    Amount: positive = debit, negative = credit (we'll split later).
+    """
+    verifications: list[dict] = []
+    current: dict | None = None
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("#VER"):
+            # Example: #VER "V" 20250115 "Text" 0
+            parts = line.split()
+            if len(parts) >= 3:
+                ymd = parts[2]
+                try:
+                    y, m, d = int(ymd[0:4]), int(ymd[4:6]), int(ymd[6:8])
+                    date_iso = f"{y:04d}-{m:02d}-{d:02d}"
+                except Exception:
+                    date_iso = "2025-01-01"
+            else:
+                date_iso = "2025-01-01"
+            current = {"date": date_iso, "text": "", "entries": []}
+            verifications.append(current)
+        elif line.startswith("#TRANS") and current is not None:
+            # Example: #TRANS 4000 {} 100.00
+            parts = line.split()
+            if len(parts) >= 3:
+                account = parts[1]
+                try:
+                    amount = float(parts[-1].replace(",", "."))
+                except Exception:
+                    amount = 0.0
+                current["entries"].append({"account": account, "amount": amount})
+        else:
+            continue
+    return verifications
+

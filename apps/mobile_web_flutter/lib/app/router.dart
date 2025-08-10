@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,6 +6,7 @@ import '../features/ledger/ui/dashboard_page.dart';
 import '../features/ingest/ui/capture_page.dart';
 import '../features/documents/ui/documents_page.dart';
 import '../features/reports/ui/reports_page.dart';
+import '../features/reports/ui/closing_checklist_page.dart';
 import '../features/settings/ui/settings_page.dart';
 import 'app_shell.dart';
 import '../features/auth/ui/login_page.dart';
@@ -14,6 +15,8 @@ import '../features/documents/ui/document_detail_page.dart';
 import '../features/ingest/ui/upload_queue_page.dart';
 import '../features/ledger/ui/verification_view.dart';
 import '../features/ledger/ui/create_verification_page.dart';
+import '../features/bank/ui/reconcile_page.dart';
+import '../features/inbox/ui/inbox_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -21,7 +24,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final loggingIn = state.subloc == '/login';
+      final loggingIn = state.uri.path == '/login';
       if (!isLoggedIn) {
         return loggingIn ? null : '/login';
       }
@@ -42,13 +45,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => DocumentDetailPage(id: state.pathParameters['id']!),
           ),
           GoRoute(path: '/reports', builder: (context, state) => const ReportsPage()),
+          GoRoute(path: '/reports/closing', builder: (context, state) => const ClosingChecklistPage()),
           GoRoute(path: '/verifications', builder: (context, state) => const VerificationListPage()),
           GoRoute(path: '/verifications/create', builder: (context, state) => const CreateVerificationPage()),
+          GoRoute(path: '/bank/reconcile', builder: (context, state) => const ReconcilePage()),
+          GoRoute(path: '/inbox', builder: (context, state) => const InboxPage()),
           GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
         ],
       ),
     ],
   );
 });
+
+
 
 

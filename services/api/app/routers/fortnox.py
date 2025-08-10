@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+from typing import Any
+from fastapi import APIRouter, Depends, HTTPException
+
+from ..config import settings
+from ..fortnox_client import get_fortnox_client
+
+
+router = APIRouter(prefix="/fortnox", tags=["fortnox"])
+
+
+@router.get("/oauth/start")
+async def oauth_start() -> dict:
+    if not settings.fortnox_enabled:
+        raise HTTPException(status_code=501, detail="fortnox disabled")
+    # In real mode, return an authorization URL. For stub, indicate stub flow.
+    return {"auth_url": "https://stub.fortnox.local/authorize?client_id=...", "stub": settings.fortnox_stub}
+
+
+@router.post("/oauth/callback")
+async def oauth_callback(body: dict) -> dict:
+    if not settings.fortnox_enabled:
+        raise HTTPException(status_code=501, detail="fortnox disabled")
+    code = body.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="code required")
+    client = get_fortnox_client(settings.fortnox_stub)
+    tokens = await client.exchange_code(code)
+    # In production, persist tokens to org/user
+    return {"tokens": tokens}
+
+
+@router.get("/receipts")
+async def list_receipts(access_token: str) -> dict:
+    if not settings.fortnox_enabled:
+        raise HTTPException(status_code=501, detail="fortnox disabled")
+    client = get_fortnox_client(settings.fortnox_stub)
+    items = await client.list_receipts(access_token)
+    return {"items": items}
+
+
+@router.get("/bank/transactions")
+async def list_bank(access_token: str) -> dict:
+    if not settings.fortnox_enabled:
+        raise HTTPException(status_code=501, detail="fortnox disabled")
+    client = get_fortnox_client(settings.fortnox_stub)
+    items = await client.list_bank_transactions(access_token)
+    return {"items": items}
+
+
+
+
+
