@@ -7,11 +7,18 @@ import '../shared/providers/success_banner_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/providers/coachmarks_provider.dart';
 
-class BertilApp extends ConsumerWidget {
+class BertilApp extends ConsumerStatefulWidget {
   const BertilApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BertilApp> createState() => _BertilAppState();
+}
+
+class _BertilAppState extends ConsumerState<BertilApp> {
+  String? _lastShownIssue;
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
       title: 'Bertil',
@@ -103,43 +110,44 @@ class BertilApp extends ConsumerWidget {
                 );
               }),
             ),
-            // Global network issue surface
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Consumer(builder: (context, ref, _) {
-                // Create a stream listener to errors
-                return StreamBuilder<NetworkIssue?>(
-                  stream: NetworkService().errors,
-                  builder: (context, snap) {
-                    final issue = snap.data;
-                    if (issue == null) return const SizedBox.shrink();
-                    return Material(
-                      elevation: 6,
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.red.shade700,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.wifi_off, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(issue.message, style: const TextStyle(color: Colors.white)),
-                            ),
-                            TextButton(
-                              onPressed: () => NetworkService().clearError(),
-                              child: const Text('Stäng', style: TextStyle(color: Colors.white)),
-                            ),
-                          ],
+            // Global network issue snackbar (ephemeral, auto-dismiss)
+            Consumer(builder: (context, ref, _) {
+              return StreamBuilder<NetworkIssue?>(
+                stream: NetworkService().errors,
+                builder: (context, snap) {
+                  final issue = snap.data;
+                  if (issue != null && issue.message != _lastShownIssue) {
+                    _lastShownIssue = issue.message;
+                    // Show as snackbar and clear stored issue so UI isn't obstructive
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(Icons.wifi_off, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(issue.message)),
+                            ],
+                          ),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 5),
+                          action: SnackBarAction(
+                            label: 'Stäng',
+                            textColor: Colors.white,
+                            onPressed: () {},
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              }),
-            ),
+                      );
+                      // Also clear the error so the stream returns to null
+                      NetworkService().clearError();
+                    });
+                  }
+                  return const SizedBox.shrink();
+                },
+              );
+            }),
           ],
         );
       },
