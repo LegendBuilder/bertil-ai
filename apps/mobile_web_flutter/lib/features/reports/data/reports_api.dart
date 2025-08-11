@@ -37,8 +37,7 @@ class ReportsApi {
     final boxes = (data['boxes'] as Map).map((k, v) => MapEntry(k.toString(), (v as num)));
     return boxes;
   }
-
-$'), '').replaceAll(RegExp(r'/+$'), '');
+  
   Uri sieExportUrl(int year) {
     final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     return Uri.parse('$base/exports/sie?year=$year');
