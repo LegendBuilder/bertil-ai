@@ -381,6 +381,33 @@ class SwedishTaxKnowledgeBase:
         }
 
 
+class SwedishTaxRAG:
+    """Minimal RAG facade to retrieve grounded snippets.
+
+    This is a stub that returns knowledge base slices; replace with a real vector store when available.
+    """
+
+    def __init__(self, kb: SwedishTaxKnowledgeBase):
+        self.kb = kb
+
+    def search(self, query: str, k: int = 3) -> list[dict[str, str]]:
+        results: list[dict[str, str]] = []
+        # Very light keyword routing to examples
+        if "representation" in query.lower():
+            results.append({
+                "title": "Representation (Skatteverket)",
+                "snippet": "Extern representation 50% avdragsgill, intern representation 100%.",
+                "url": self.kb.tax_rules["representation"]["url"],
+            })
+        if "moms" in query.lower() or "vat" in query.lower():
+            results.append({
+                "title": "Momssatser (Skatteverket)",
+                "snippet": "25% standard, 12% restaurang, 6% personbefordran och kultur.",
+                "url": self.kb.tax_rules["vat_rates"]["url"],
+            })
+        return results[:k]
+
+
 # Singleton instance
 _knowledge_base: SwedishTaxKnowledgeBase = None
 

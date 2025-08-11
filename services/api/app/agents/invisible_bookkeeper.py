@@ -102,6 +102,8 @@ class InvisibleBookkeeper:
             return {"error": "Invalid amount", "fallback": True}
             
         # Your existing suggest_account_and_vat function
+        from ..metrics_llm import record_request
+        record_request("rules", "heuristics", "suggest_account")
         decision = await suggest_account_and_vat(vendor, total, self.session)
         
         # Enhanced VAT code detection

@@ -10,6 +10,7 @@ from ..db import get_session
 from ..models import VendorEmbedding
 from ..vendor_embeddings import embed_vendor_name
 from ..models import VatCode
+from ..agents.swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
@@ -74,5 +75,16 @@ async def seed_vat_codes(session: AsyncSession = Depends(get_session)) -> dict:
         ins += 1
     await session.commit()
     return {"inserted": ins, "total": len(seeds)}
+
+
+@router.post("/kb/rebuild")
+async def kb_rebuild() -> dict:
+    """Rebuild or refresh the Swedish knowledge base (stubbed)."""
+    kb = get_knowledge_base()
+    rag = SwedishTaxRAG(kb)
+    # Run a couple of warmup searches
+    _ = rag.search("representation moms 50%", k=2)
+    _ = rag.search("momssatser 25 12 6", k=2)
+    return {"status": "ok", "kb_loaded": True}
 
 

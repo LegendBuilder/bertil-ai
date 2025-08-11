@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request
+import sys
+import asyncio
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
@@ -15,6 +17,12 @@ from .logging_utils import mask_in_structure
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application instance."""
+    # Ensure Windows uses a selector event loop compatible with async DB drivers
+    if sys.platform == "win32":
+        try:
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        except Exception:
+            pass
     app = FastAPI(title="Bertil AI API", version="0.0.1")
 
     # CORS for dev: allow any origin without credentials to avoid preflight failures in browsers
@@ -115,6 +123,16 @@ def create_app() -> FastAPI:
         # Create tables for local/dev (SQLite). In production use Alembic migrations.
         async with engine.begin() as conn:
             await conn.run_sync(lambda c: Base.metadata.create_all(bind=c))
+        # For test/CI, purge volatile transactional tables to isolate each TestClient
+        import os as _os
+        if _os.environ.get("APP_ENV", "local").lower() in ("test", "ci"):
+            from sqlalchemy import text as _text
+            async with engine.begin() as conn:
+                try:
+                    for tbl in ("entries", "verifications", "compliance_flags", "audit_log", "period_locks", "bank_transactions"):
+                        await conn.execute(_text(f"DELETE FROM {tbl}"))
+                except Exception:
+                    pass
         # Seed core VAT codes so tests relying on listing don't fail on empty DB
         try:
             from .routers.admin import seed_vat_codes  # lazy import

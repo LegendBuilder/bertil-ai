@@ -30,7 +30,8 @@ sentence-transformers==2.7.0
 rapidfuzz==3.9.6
 openai==1.40.0
 anthropic==0.34.1
-chromadb==0.5.5
-tiktoken==0.7.0
+# RAG tooling for KB will be installed in a separate tools env to avoid httpx conflicts
+# chromadb==0.5.5
+# tiktoken==0.7.0
 
 

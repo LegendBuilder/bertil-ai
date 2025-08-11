@@ -15,6 +15,9 @@ LLM_TEMPERATURE=0.1
 LLM_MODEL=meta-llama/llama-3.1-70b-instruct:free
 # Optional: enable fallback only when ready
 LLM_FALLBACK_ENABLED=false
+# Optional: Redis cache for LLM responses (recommended)
+LLM_CACHE_URL=redis://localhost:6379/1
+LLM_CACHE_TTL_HOURS=24
 # Supabase (private bucket)
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
@@ -62,5 +65,13 @@ curl -X POST http://127.0.0.1:8000/admin/seed/vendors
 ```
 
 Auto-post will consult the dictionary before rule-based mapping.
+
+## Admin
+
+- Rebuild KB (stubbed RAG warmup):
+
+```
+curl -X POST http://127.0.0.1:8000/admin/kb/rebuild
+```
 
 

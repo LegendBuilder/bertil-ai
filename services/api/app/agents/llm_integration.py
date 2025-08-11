@@ -3,9 +3,12 @@ LLM Integration Module - Connect to OpenAI/Anthropic/OpenRouter/Local Models
 """
 
 import os
+import json
 from typing import Dict, Any, Optional
 from enum import Enum
 from dataclasses import dataclass
+from datetime import timedelta
+import time
 
 class LLMProvider(Enum):
     OPENAI = "openai"
@@ -29,6 +32,17 @@ class LLMService:
     def __init__(self, config: LLMConfig):
         self.config = config
         self._init_client()
+        self._cache = None
+        self._init_cache()
+
+    def _init_cache(self) -> None:
+        try:
+            from ..config import settings  # local import to avoid cycles
+            if settings.llm_cache_url:
+                import redis
+                self._cache = redis.Redis.from_url(settings.llm_cache_url, decode_responses=True)
+        except Exception:
+            self._cache = None
         
     def _init_client(self):
         """Initialize the appropriate LLM client."""
@@ -91,6 +105,22 @@ class LLMService:
         Be precise with Swedish formats (SEK, dates, org numbers).
         """
         
+        # Cache key
+        cache_key = None
+        try:
+            if self._cache:
+                cache_key = f"llm:extract:{hash(ocr_text)}"
+                cached = self._cache.get(cache_key)
+                if cached:
+                    return json.loads(cached)
+        except Exception:
+            pass
+
+        from ..metrics_llm import record_request, record_error, observe_latency
+        provider_label = self.config.provider.value
+        model_label = getattr(self.client, "models", {}).get("swedish") if self.config.provider == LLMProvider.OPENROUTER else self.config.model
+        record_request(provider_label, model_label or "unknown", "extract")
+        start = time.perf_counter()
         if self.config.provider == LLMProvider.OPENAI:
             response = await self._openai_complete(prompt)
             return self._parse_json_response(response)
@@ -105,10 +135,21 @@ class LLMService:
                 task_type="extraction",
                 temperature=self.config.temperature,
             )
-            return resp if isinstance(resp, dict) else {"raw_response": str(resp)}
+            data = resp if isinstance(resp, dict) else {"raw_response": str(resp)}
+            # Cache
+            try:
+                if self._cache:
+                    from ..config import settings
+                    self._cache.setex(cache_key, timedelta(hours=settings.llm_cache_ttl_hours), json.dumps(data, ensure_ascii=False))
+            except Exception:
+                pass
+            observe_latency(provider_label, model_label or "unknown", "extract", time.perf_counter() - start)
+            return data
         else:
             response = await self._local_complete(prompt)
-            return self._parse_json_response(response)
+            out = self._parse_json_response(response)
+            observe_latency(provider_label, model_label or "unknown", "extract", time.perf_counter() - start)
+            return out
     
     async def optimize_tax(self, verification_data: Dict[str, Any]) -> Dict[str, Any]:
         """Swedish tax optimization using LLM with Skatteverket rules."""

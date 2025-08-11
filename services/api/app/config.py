@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     llm_fallback_enabled: bool = False
     llm_provider: str | None = None  # e.g., openai/anthropic
     llm_api_key: str | None = None
+    openrouter_api_key: str | None = None  # allow OPENROUTER_API_KEY in .env without validation error
     llm_extraction_threshold: float = 0.6
+    llm_cache_url: str | None = None  # e.g., redis://localhost:6379/1
+    llm_cache_ttl_hours: int = 24
 
     # Logging
     log_requests: bool = False
