@@ -11,6 +11,7 @@ from ..ai import suggest_account_and_vat, build_entries_with_code
 from ..ocr import get_ocr_adapter, _extract_fields_from_text
 from ..compliance import run_verification_rules, compute_score
 from ..routers.verifications import VerificationIn, EntryIn, create_verification
+from ..ai_fallback import extract_fields_with_llm
 
 
 class InvisibleBookkeeper:
@@ -55,12 +56,30 @@ class InvisibleBookkeeper:
                 
                 # Only proceed with full automation if very high confidence
                 if overall_confidence < 0.8 or validation_score < 0.85:
-                    return {
-                        "status": "manual_review_needed",
-                        "reason": f"Confidence too low: OCR={overall_confidence:.2f}, Validation={validation_score:.2f}",
-                        "extracted": extracted_data,
-                        "fallback": True
-                    }
+                    # Attempt LLM fallback extraction if enabled
+                    llm_fields = await extract_fields_with_llm(ocr_result.text)
+                    if llm_fields:
+                        # Merge LLM fields into extracted data to boost confidence
+                        for k, v, c in llm_fields:
+                            if k not in extracted_data or not extracted_data.get(k):
+                                extracted_data[k] = v
+                        # Recalculate a conservative combined confidence
+                        overall_confidence = max(overall_confidence, min(0.85, sum(f[2] for f in llm_fields) / len(llm_fields)))
+                        validation_score = self._validate_extraction(extracted_data, ocr_result.text)
+                        if overall_confidence < 0.8 or validation_score < 0.85:
+                            return {
+                                "status": "manual_review_needed",
+                                "reason": f"Confidence too low after LLM assist: OCR={overall_confidence:.2f}, Validation={validation_score:.2f}",
+                                "extracted": extracted_data,
+                                "fallback": True,
+                            }
+                    else:
+                        return {
+                            "status": "manual_review_needed",
+                            "reason": f"Confidence too low: OCR={overall_confidence:.2f}, Validation={validation_score:.2f}",
+                            "extracted": extracted_data,
+                            "fallback": True,
+                        }
                 
                 # Enhance the body with validated extracted data
                 body.update({

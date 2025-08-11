@@ -1,0 +1,1 @@
+{"text": "stub-ocr-len:31499\nKaffe AB\n2025-01-15\n123.45", "boxes": [{"x": 0.1, "y": 0.1, "w": 0.3, "h": 0.08, "label": "Datum"}, {"x": 0.1, "y": 0.22, "w": 0.5, "h": 0.1, "label": "Leverantör"}, {"x": 0.6, "y": 0.8, "w": 0.3, "h": 0.12, "label": "Belopp"}], "extracted_fields": [["date", "2025-01-15", 0.85], ["total", "123.45", 0.8], ["vendor", "stub-ocr-len:31499", 0.7]]}

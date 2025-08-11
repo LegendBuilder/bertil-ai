@@ -1,18 +1,17 @@
 """
-LLM Integration Module - Connect to OpenAI/Anthropic/Local Models
+LLM Integration Module - Connect to OpenAI/Anthropic/OpenRouter/Local Models
 """
 
 import os
 from typing import Dict, Any, Optional
 from enum import Enum
-import openai
-import anthropic
 from dataclasses import dataclass
 
 class LLMProvider(Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic" 
     AZURE_OPENAI = "azure_openai"
+    OPENROUTER = "openrouter"
     LOCAL = "local"  # Ollama/llama.cpp
 
 @dataclass
@@ -34,19 +33,29 @@ class LLMService:
     def _init_client(self):
         """Initialize the appropriate LLM client."""
         if self.config.provider == LLMProvider.OPENAI:
+            # Lazy import to avoid hard dependency when not used
+            import openai  # type: ignore
             openai.api_key = self.config.api_key or os.getenv("OPENAI_API_KEY")
             self.client = openai
             
         elif self.config.provider == LLMProvider.ANTHROPIC:
+            # Lazy import
+            import anthropic  # type: ignore
             self.client = anthropic.Anthropic(
                 api_key=self.config.api_key or os.getenv("ANTHROPIC_API_KEY")
             )
             
         elif self.config.provider == LLMProvider.AZURE_OPENAI:
+            import openai  # type: ignore
             openai.api_type = "azure"
             openai.api_base = self.config.base_url
             openai.api_key = self.config.api_key
             self.client = openai
+        
+        elif self.config.provider == LLMProvider.OPENROUTER:
+            # Use dedicated OpenRouter client
+            from .openrouter_integration import get_openrouter_client
+            self.client = get_openrouter_client()
             
         elif self.config.provider == LLMProvider.LOCAL:
             # For Ollama or llama.cpp
@@ -84,12 +93,22 @@ class LLMService:
         
         if self.config.provider == LLMProvider.OPENAI:
             response = await self._openai_complete(prompt)
+            return self._parse_json_response(response)
         elif self.config.provider == LLMProvider.ANTHROPIC:
             response = await self._anthropic_complete(prompt)
+            return self._parse_json_response(response)
+        elif self.config.provider == LLMProvider.OPENROUTER:
+            # Use Swedish model, force JSON
+            resp = await self.client._call_openrouter(  # type: ignore[attr-defined]
+                model=self.client.models.get("swedish", "meta-llama/llama-3.1-70b-instruct:free"),
+                prompt=prompt,
+                task_type="extraction",
+                temperature=self.config.temperature,
+            )
+            return resp if isinstance(resp, dict) else {"raw_response": str(resp)}
         else:
             response = await self._local_complete(prompt)
-            
-        return self._parse_json_response(response)
+            return self._parse_json_response(response)
     
     async def optimize_tax(self, verification_data: Dict[str, Any]) -> Dict[str, Any]:
         """Swedish tax optimization using LLM with Skatteverket rules."""
@@ -179,11 +198,22 @@ class LLMService:
             return await self._openai_complete(prompt)
         elif self.config.provider == LLMProvider.ANTHROPIC:
             return await self._anthropic_complete(prompt)
+        elif self.config.provider == LLMProvider.OPENROUTER:
+            # For generic completions via OpenRouter when not strict JSON
+            resp = await self.client._call_openrouter(  # type: ignore[attr-defined]
+                model=self.client.models.get("swedish", "meta-llama/llama-3.1-70b-instruct:free"),
+                prompt=prompt,
+                task_type="general",
+                temperature=self.config.temperature,
+            )
+            # Return a string for downstream parsing compatibility
+            return json.dumps(resp, ensure_ascii=False)
         else:
             return await self._local_complete(prompt)
     
     async def _openai_complete(self, prompt: str) -> str:
         """OpenAI completion."""
+        import openai  # type: ignore
         response = await openai.ChatCompletion.acreate(
             model=self.config.model,
             messages=[
@@ -197,6 +227,7 @@ class LLMService:
     
     async def _anthropic_complete(self, prompt: str) -> str:
         """Anthropic Claude completion."""
+        # anthropic is imported in _init_client
         response = await self.client.messages.create(
             model=self.config.model,
             max_tokens=self.config.max_tokens,
@@ -223,7 +254,6 @@ class LLMService:
     
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
         """Parse JSON from LLM response."""
-        import json
         import re
         
         # Extract JSON from response (LLMs often add explanation)

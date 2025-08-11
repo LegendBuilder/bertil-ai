@@ -8,6 +8,13 @@
 CORS_ALLOW_ORIGINS=*
 JWT_SECRET=change-me
 OCR_PROVIDER=stub
+# LLM / OpenRouter
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-...
+LLM_TEMPERATURE=0.1
+LLM_MODEL=meta-llama/llama-3.1-70b-instruct:free
+# Optional: enable fallback only when ready
+LLM_FALLBACK_ENABLED=false
 # Supabase (private bucket)
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...

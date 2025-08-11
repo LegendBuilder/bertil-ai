@@ -29,3 +29,4 @@ def test_metrics_event_missing_name_400() -> None:
     assert body.get("detail", {}).get("error") == "missing_name"
 
 
+

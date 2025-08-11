@@ -8,7 +8,16 @@ Detta monorepo innehåller klient (Flutter) och backend (FastAPI) med **avancera
 
 ## 🚀 AI-Agenter (Ny funktionalitet)
 
-**Bertil-AI är nu utrustad med fyra kraftfulla AI-agenter som levererar "Tesla-upplevelse" för bokföring:**
+**Bertil-AI är utrustad med fyra kraftfulla AI-agenter som levererar "Tesla-upplevelse" för bokföring.**
+
+Aktivering (dev):
+
+```
+cp .env.example .env
+# Fyll i OPENROUTER_API_KEY och sätt LLM_PROVIDER=openrouter
+pip install -r services/api/requirements.txt
+python -m uvicorn services.api.app.main:app --reload
+```
 
 ### 1. **Invisible Bookkeeper Agent** (99% automatisering)
 - ✅ Avancerad OCR med konfidensvalidering
