@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.bertil_mobile_web_flutter"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Force the highest NDK version required by plugins
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

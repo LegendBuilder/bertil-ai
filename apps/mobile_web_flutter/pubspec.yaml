@@ -21,7 +21,8 @@ dependencies:
   pdfx: ^2.6.0
   crypto: ^3.0.3
   isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
+  # Temporarily disabled for Android build sync on AGP 8+: plugin lacks namespace in this env
+  # isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.4
   image: ^4.2.0
   shared_preferences: ^2.3.2

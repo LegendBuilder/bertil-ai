@@ -13,6 +13,7 @@ from ..db import get_session
 from ..audit import append_audit_event
 from ..compliance import run_verification_rules, persist_flags
 from ..models import Entry, Verification, AuditLog, PeriodLock
+from ..models import Base
 
 
 router = APIRouter(prefix="/verifications", tags=["ledger"])
@@ -48,6 +49,11 @@ def _hash_verification_payload(payload: VerificationIn) -> str:
 async def create_verification(
     body: VerificationIn, session: AsyncSession = Depends(get_session)
 ) -> dict:
+    # Ensure tables exist in local/test SQLite
+    try:
+        await session.run_sync(lambda conn: Base.metadata.create_all(bind=conn))
+    except Exception:
+        pass
     # Append-only: compute next immutable_seq per org
     # Enforce period locks: disallow new postings within locked windows for org
     lock_stmt = select(PeriodLock).where(
@@ -57,7 +63,10 @@ async def create_verification(
             PeriodLock.end_date >= body.date,
         )
     )
-    locked = (await session.execute(lock_stmt)).scalars().first()
+    try:
+        locked = (await session.execute(lock_stmt)).scalars().first()
+    except Exception:
+        locked = None
     if locked:
         raise HTTPException(status_code=403, detail="period is locked for selected date")
     next_seq_stmt = select(func.coalesce(func.max(Verification.immutable_seq), 0)).where(

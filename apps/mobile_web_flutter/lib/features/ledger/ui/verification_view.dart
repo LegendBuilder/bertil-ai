@@ -13,17 +13,26 @@ class VerificationListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncList = ref.watch(recentVerificationsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Verifikationer')),
+      appBar: AppBar(
+        title: const Text('Verifikationer'),
+        actions: [
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () {},
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: asyncList.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Kunde inte hÃ¤mta: $e')),
+        error: (e, st) => Center(child: Text('Kunde inte hämta: $e')),
         data: (list) => ListView.separated(
           itemCount: list.length,
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, i) {
             final v = list[i];
             return ListTile(
-              title: Text('V${v.immutableSeq} Â· ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
+              title: Text('V${v.immutableSeq} · ${v.totalAmount.toStringAsFixed(2)} ${v.currency}'),
               subtitle: Text(v.date),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => _VerificationDetailPage(id: v.id, immutableSeq: v.immutableSeq)),
@@ -75,7 +84,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 if (v.explainability != null && v.explainability!.isNotEmpty) ...[
-                  const Text('VarfÃ¶r valde vi detta?', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('Varför valde vi detta?', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Text(v.explainability!),
                   const SizedBox(height: 12),
@@ -118,7 +127,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                               }
                             },
                             icon: const Icon(Icons.event_available_outlined),
-                            label: const Text('Ã…tgÃ¤rda: korrigera datum'),
+                            label: const Text('Åtgärda: korrigera datum'),
                           ),
                         Row(children: [
                           if (v.documentLink != null && v.documentLink!.startsWith('/documents/'))
@@ -128,7 +137,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                                 Navigator.of(context).pushNamed('/documents/$docId');
                               },
                               icon: const Icon(Icons.open_in_new),
-                              label: const Text('Ã…tgÃ¤rda: Ã¶ppna underlag'),
+                              label: const Text('Åtgärda: öppna underlag'),
                             )
                           else
                             OutlinedButton.icon(
@@ -172,7 +181,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                       final debit = (e['debit'] as num).toDouble();
                       final credit = (e['credit'] as num).toDouble();
                       return ListTile(
-                        title: Text('${e['account']} Â· D ${debit.toStringAsFixed(2)} / K ${credit.toStringAsFixed(2)}'),
+                        title: Text('${e['account']} · D ${debit.toStringAsFixed(2)} / K ${credit.toStringAsFixed(2)}'),
                         subtitle: Text(e['dimension']?.toString() ?? ''),
                       );
                     },
@@ -181,7 +190,7 @@ class _VerificationDetailPage extends ConsumerWidget {
                 const Spacer(),
                 Row(
                   children: [
-                    Expanded(child: const Text('Append-only: RÃ¤ttning sker med ombokning, aldrig direkt Ã¤ndring.')),
+                    Expanded(child: const Text('Append-only: Rättning sker med ombokning, aldrig direkt ändring.')),
                     OutlinedButton.icon(
                       onPressed: () async {
                         await api.reverseVerification(id);

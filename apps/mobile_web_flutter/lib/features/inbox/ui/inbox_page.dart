@@ -5,6 +5,7 @@ import '../../../shared/services/network.dart';
 import '../provider/inbox_providers.dart';
 import '../../../shared/widgets/shortcut_help_overlay.dart';
 import 'package:flutter/services.dart';
+import '../../../shared/services/analytics.dart';
 
 // Moved model and provider to provider/inbox_providers.dart
 
@@ -21,7 +22,22 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     final tasks = ref.watch(inboxProvider);
     final dio = NetworkService().client;
     return Scaffold(
-      appBar: AppBar(title: const Text('Autopilot Inbox')),
+      appBar: AppBar(
+        title: const Text('Autopilot Inbox'),
+        actions: [
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () => ShortcutHelpOverlay.show(context, const [
+              MapEntry('A', 'Godkänn markerade'),
+              MapEntry('U', 'Ångra markerade'),
+              MapEntry('Mellanslag', 'Markera/avmarkera rad'),
+              MapEntry('Tab/Shift+Tab', 'Navigera i listan'),
+              MapEntry('?', 'Visa denna hjälp'),
+            ], title: 'Autopilot Inbox – kortkommandon'),
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: Shortcuts(
         shortcuts: <LogicalKeySet, Intent>{
           LogicalKeySet(LogicalKeyboardKey.keyA): const ActivateIntent(),
@@ -33,8 +49,10 @@ class _InboxPageState extends ConsumerState<InboxPage> {
             ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: (intent) {
               final keys = RawKeyboard.instance.keysPressed;
               if (keys.contains(LogicalKeyboardKey.keyA)) {
+                AnalyticsService.logEvent('inbox_bulk_approve');
                 _bulkApprove(dio);
               } else if (keys.contains(LogicalKeyboardKey.keyU)) {
+                AnalyticsService.logEvent('inbox_bulk_undo');
                 _bulkUndo(dio);
               } else if (keys.contains(LogicalKeyboardKey.slash) && keys.contains(LogicalKeyboardKey.shift)) {
                 ShortcutHelpOverlay.show(context, [
@@ -97,7 +115,9 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                   ]),
                 ),
                 Expanded(
-                  child: ListView.separated(
+                  child: RefreshIndicator(
+                    onRefresh: () async { setState(() {}); },
+                    child: ListView.separated(
                     itemCount: list.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
@@ -109,18 +129,19 @@ class _InboxPageState extends ConsumerState<InboxPage> {
                         child: FocusTraversalOrder(
                           order: NumericFocusOrder(i.toDouble()),
                         child: ListTile(
-                            leading: Checkbox(
-                              value: sel,
-                              onChanged: (v) => setState(() => v == true ? _selected.add(it.id) : _selected.remove(it.id)),
-                              autofocus: i == 0,
-                            ),
-                            title: Text('${it.type} • ${(it.confidence * 100).toStringAsFixed(0)}%'),
-                            subtitle: Text(_explain(it)),
-                            onTap: () => setState(() => sel ? _selected.remove(it.id) : _selected.add(it.id)),
+                          leading: Checkbox(
+                            value: sel,
+                            onChanged: (v) => setState(() => v == true ? _selected.add(it.id) : _selected.remove(it.id)),
+                            autofocus: i == 0,
                           ),
+                          title: Text('${it.type} • ${(it.confidence * 100).toStringAsFixed(0)}%'),
+                          subtitle: Text(_explain(it)),
+                          onTap: () => setState(() => sel ? _selected.remove(it.id) : _selected.add(it.id)),
+                        ),
                         ),
                       );
                     },
+                    ),
                   ),
                 )
               ]);

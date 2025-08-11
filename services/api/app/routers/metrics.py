@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from ..config import settings
 import redis.asyncio as redis  # type: ignore
 from ..metrics_flow import get_stats
@@ -33,6 +33,7 @@ async def metrics_flow() -> dict:
 
 
 _fail_counters: dict[str, int] = {"ocr": 0, "extract": 0, "autopost": 0}
+_frontend_events: dict[str, int] = {}
 
 
 @router.post("/metrics/fail/{area}")
@@ -61,5 +62,24 @@ async def metrics_alerts() -> dict:
         if v > 0:
             alerts.append({"type": f"{k}_failures", "level": "warning", "message": f"{v} failures in {k}"})
     return {"alerts": alerts}
+
+
+@router.post("/metrics/event")
+async def metrics_event(payload: dict) -> dict:
+    """Accept lightweight frontend analytics events without PII.
+
+    Payload: {"name": str, "params": dict, "platform": "web"|"mobile"}
+    We only count by name to keep this extremely privacy-preserving.
+    """
+    name = (payload.get("name") or '').strip()
+    if not name:
+        raise HTTPException(status_code=400, detail={"error": "missing_name"})
+    _frontend_events[name] = _frontend_events.get(name, 0) + 1
+    return {"ok": True, "name": name, "count": _frontend_events[name]}
+
+
+@router.get("/metrics/event/stats")
+async def metrics_event_stats() -> dict:
+    return {"events": _frontend_events}
 
 

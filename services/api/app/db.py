@@ -17,6 +17,12 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSe
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    # Ensure tables exist for local/dev and CI SQLite runs
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(lambda c: Base.metadata.create_all(bind=c))
+    except Exception:
+        pass
     async with SessionLocal() as session:
         yield session
 

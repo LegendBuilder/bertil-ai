@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..models import PeriodLock
+from ..models import Base
 
 
 router = APIRouter(prefix="/period", tags=["period"])
@@ -29,6 +30,11 @@ async def status(org_id: int = 1, session: AsyncSession = Depends(get_session)) 
 
 @router.post("/close")
 async def close_period(body: dict, session: AsyncSession = Depends(get_session)) -> dict:
+    # Ensure tables exist for local/test SQLite
+    try:
+        await session.run_sync(lambda conn: Base.metadata.create_all(bind=conn))
+    except Exception:
+        pass
     try:
         org_id = int(body.get("org_id") or 1)
         start = date.fromisoformat(body["start_date"])  # type: ignore[index]

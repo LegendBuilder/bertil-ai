@@ -10,6 +10,7 @@ import '../provider/explainability_provider.dart';
 import '../../ingest/data/ingest_api.dart';
 import '../../ledger/data/ledger_api.dart';
 import '../../ledger/data/vat_api.dart';
+import '../../../shared/services/analytics.dart';
 
 class DocumentDetailPage extends ConsumerWidget {
   const DocumentDetailPage({super.key, required this.id});
@@ -33,17 +34,20 @@ class DocumentDetailPage extends ConsumerWidget {
                   flex: 3,
                   child: Stack(
                     children: [
-                       Positioned.fill(
-                         child: Semantics(
-                           label: 'Dokumentbild',
-                           image: true,
-                           child: Image.network(
-                             doc.imageUrl,
-                             fit: BoxFit.contain,
-                             errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas')),
-                           ),
-                         ),
-                       ),
+                        Positioned.fill(
+                          child: Semantics(
+                            label: 'Dokumentbild',
+                            image: true,
+                            child: Hero(
+                              tag: 'doc_${doc.id}',
+                              child: Image.network(
+                                doc.imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Center(child: Text('Bild saknas')),
+                              ),
+                            ),
+                          ),
+                        ),
                       ...doc.boxes.map((b) {
                         return Positioned(
                           left: b.x * maxW,
@@ -116,6 +120,7 @@ class DocumentDetailPage extends ConsumerWidget {
                         Wrap(spacing: 8, runSpacing: 8, children: [
                           OutlinedButton(
                             onPressed: () {
+                              AnalyticsService.logEvent('doc_mark_waiting_info');
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.waitingInfo);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som "Väntar info"')));
                             },
@@ -139,6 +144,7 @@ class DocumentDetailPage extends ConsumerWidget {
                               ).value;
                               final api = IngestApi(NetworkService().client);
                               final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor, vatCode: _VatPickerState.lastSelectedCode);
+                              AnalyticsService.logEvent('doc_autopost_clicked', {"doc_id": id});
                               // On success, mark doc as done
                               // ignore: use_build_context_synchronously
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);
@@ -166,6 +172,7 @@ class DocumentDetailPage extends ConsumerWidget {
                               final verId = data['id'] as int?;
                               if (verId != null) {
                                 if (context.mounted) {
+                                  AnalyticsService.logEvent('doc_open_verification', {"ver_id": verId});
                                   context.go('/verifications');
                                 }
                               } else {
@@ -178,6 +185,7 @@ class DocumentDetailPage extends ConsumerWidget {
                           ),
                           ElevatedButton(
                             onPressed: () {
+                              AnalyticsService.logEvent('doc_mark_done');
                               ref.read(recentDocumentsProvider.notifier).markStatus(id, DocumentStatus.done);
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Markerad som Klar')));
                             },

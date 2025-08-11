@@ -13,6 +13,11 @@ class _ClosingChecklistPageState extends ConsumerState<ClosingChecklistPage> {
   String _end = '';
   bool _busy = false;
   @override
+  void dispose() {
+    // No controllers here; if added later, ensure disposal
+    super.dispose();
+  }
+  @override
   Widget build(BuildContext context) {
     final api = ref.watch(closingApiProvider);
     return Scaffold(

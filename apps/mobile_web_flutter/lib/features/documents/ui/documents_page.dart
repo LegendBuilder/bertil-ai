@@ -15,6 +15,7 @@ import '../provider/document_list_providers.dart';
 import '../domain/document.dart';
 import '../../../shared/services/network.dart';
 import 'package:flutter/services.dart';
+import '../../../shared/widgets/app_bar_accent.dart';
 import '../../../shared/widgets/shortcut_help_overlay.dart';
 import '../../../shared/widgets/skeleton.dart';
 
@@ -25,7 +26,23 @@ class DocumentsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recent = ref.watch(recentDocumentsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Dokument')),
+      appBar: AppBar(
+        title: const Text('Dokument'),
+        actions: [
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () => ShortcutHelpOverlay.show(context, const [
+              MapEntry('N', 'Fota kvitto'),
+              MapEntry('U', 'Ladda upp från filer'),
+              MapEntry('D', 'Visa tips om dropzone'),
+              MapEntry('Tab/Shift+Tab', 'Navigera i listor'),
+              MapEntry('?', 'Visa denna hjälp'),
+            ], title: 'Dokument – kortkommandon'),
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+        bottom: appBarAccent(context),
+      ),
       body: Shortcuts(
         shortcuts: <LogicalKeySet, Intent>{
           LogicalKeySet(LogicalKeyboardKey.keyN): const ActivateIntent(),
@@ -85,7 +102,12 @@ class DocumentsPage extends ConsumerWidget {
                 ],
               ),
             )
-          : DefaultTabController(
+          : RefreshIndicator(
+              onRefresh: () async {
+                // simple pull-to-refresh: no-op on provider (demo), rely on network cache invalidation if added later
+                await Future<void>.delayed(const Duration(milliseconds: 300));
+              },
+              child: DefaultTabController(
               length: 4,
               child: Column(
                 children: [
@@ -104,6 +126,7 @@ class DocumentsPage extends ConsumerWidget {
                     ]),
                   ),
                 ],
+              ),
               ),
             ),
         ),
@@ -220,7 +243,9 @@ class _DocGrid extends StatelessWidget {
         final thumbUrl = '${NetworkService().client.options.baseUrl}/documents/${d.id}/thumbnail';
         return InkWell(
           onTap: () => context.go('/documents/${d.id}'),
-          child: Card(
+          child: Hero(
+            tag: 'doc_${d.id}',
+            child: Card(
             clipBehavior: Clip.hardEdge,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -231,11 +256,7 @@ class _DocGrid extends StatelessWidget {
                       child: Semantics(
                         label: 'Dokumentminiatyr',
                         image: true,
-                        child: Image.network(
-                          thumbUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.receipt_long_outlined, size: 32)),
-                        ),
+                          child: Image.network(thumbUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.receipt_long_outlined, size: 32))),
                       ),
                     ),
                   ]),
@@ -252,6 +273,7 @@ class _DocGrid extends StatelessWidget {
                 )
               ],
             ),
+          ),
           ),
         );
       },

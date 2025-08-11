@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
     async def on_startup() -> None:
         # Create tables for local/dev (SQLite). In production use Alembic migrations.
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(lambda c: Base.metadata.create_all(bind=c))
         # Seed core VAT codes so tests relying on listing don't fail on empty DB
         try:
             from .routers.admin import seed_vat_codes  # lazy import

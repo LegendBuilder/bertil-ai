@@ -40,7 +40,7 @@ class AppShell extends StatelessWidget {
                     destinations: [
                       for (final t in _tabs)
                         NavigationRailDestination(
-                          icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
+                          icon: Tooltip(message: t.label, child: Icon(t.icon, semanticLabel: '${t.label} flik')),
                           label: Text(t.label),
                         ),
                     ],
@@ -63,7 +63,7 @@ class AppShell extends StatelessWidget {
               destinations: [
                 for (final t in _tabs)
                   NavigationDestination(
-                    icon: Icon(t.icon, semanticLabel: '${t.label} flik'),
+                    icon: Tooltip(message: t.label, child: Icon(t.icon, semanticLabel: '${t.label} flik')),
                     label: t.label,
                     tooltip: t.label,
                   ),

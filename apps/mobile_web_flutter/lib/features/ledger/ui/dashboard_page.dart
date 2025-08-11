@@ -14,7 +14,16 @@ class DashboardPage extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final pendingCount = ref.watch(pendingTasksCountProvider).maybeWhen(orElse: () => 0, data: (n) => n);
     return Scaffold(
-      appBar: AppBar(title: const Text('Hem')),
+      appBar: AppBar(
+        title: const Text('Hem'),
+        actions: [
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () {},
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: Shortcuts(
         shortcuts: <LogicalKeySet, Intent>{
           LogicalKeySet(LogicalKeyboardKey.keyG): const ActivateIntent(),

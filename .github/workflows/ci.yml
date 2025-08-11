@@ -2,59 +2,6 @@ name: CI
 
 on:
   push:
-  pull_request:
-
-jobs:
-  api:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install deps
-        run: |
-          python -m pip install -U pip
-          pip install -r services/api/requirements.txt
-          pip install ruff coverage
-      - name: Lint (ruff)
-        run: ruff check services/api
-      - name: Tests with coverage
-        env:
-          DATABASE_URL: sqlite+aiosqlite:///./test_api_ci.db
-          OCR_PROVIDER: stub
-        run: |
-          coverage run -m pytest -q
-          coverage xml -o coverage-api.xml
-          coverage report --fail-under=75
-      - name: Acceptance smoke (load test)
-        env:
-          DATABASE_URL: sqlite+aiosqlite:///./test_api_ci.db
-          OCR_PROVIDER: stub
-        run: |
-          python services/api/scripts/load_test.py --concurrency 2 --requests 8 --mode testclient --budget 0.8 | cat
-
-  flutter:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.0'
-      - name: Get packages
-        working-directory: apps/mobile_web_flutter
-        run: flutter pub get
-      - name: Analyze
-        working-directory: apps/mobile_web_flutter
-        run: flutter analyze
-      - name: Widget tests (if any)
-        working-directory: apps/mobile_web_flutter
-        run: flutter test --coverage || true
-
-name: CI
-
-on:
-  push:
     branches: [ main, develop ]
   pull_request:
 

@@ -19,7 +19,22 @@ class ReportsPage extends ConsumerWidget {
     final tb = ref.watch(trialBalanceProvider);
     final comp = ref.watch(complianceScoreProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Rapporter')),
+      appBar: AppBar(
+        title: const Text('Rapporter'),
+        actions: [
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () => ShortcutHelpOverlay.show(context, const [
+              MapEntry('V', 'Exportera momsfil (SKV)'),
+              MapEntry('E', 'Exportera SIE'),
+              MapEntry('P', 'Öppna PDF-rapporter'),
+              MapEntry('Tab/Shift+Tab', 'Navigera mellan knappar och paneler'),
+              MapEntry('?', 'Visa denna hjälp'),
+            ], title: 'Rapporter – kortkommandon'),
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: Shortcuts(
         shortcuts: <LogicalKeySet, Intent>{
           LogicalKeySet(LogicalKeyboardKey.keyV): const ActivateIntent(),
@@ -111,7 +126,7 @@ class ReportsPage extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 16),
-            Text('Export', style: Theme.of(context).textTheme.titleMedium),
+            Semantics(label: 'Export', child: Text('Export', style: Theme.of(context).textTheme.titleMedium)),
             const SizedBox(height: 8),
             // Use Wrap to avoid horizontal overflow on smaller screens
             Wrap(
@@ -206,14 +221,13 @@ class ReportsPage extends ConsumerWidget {
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse(url);
-                      final ok = await canLaunchUrl(uri) && await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                        webOnlyWindowName: '_blank',
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(ok ? 'Momsfil exporteras' : 'Kunde inte öppna momsfil-länk')),
-                      );
+                      final can = await canLaunchUrl(uri);
+                      if (can) {
+                        final ok = await launchUrl(uri, mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Momsfil exporteras' : 'Kunde inte öppna momsfil-länk')));
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Momsfil export inaktiverad')));
+                      }
                     },
                     icon: const Icon(Icons.file_download, semanticLabel: 'Exportera momsfil till Skatteverket'),
                     label: const Text('Momsfil (SKV)'),

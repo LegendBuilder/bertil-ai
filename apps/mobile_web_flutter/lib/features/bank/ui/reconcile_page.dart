@@ -5,6 +5,7 @@ import '../../../shared/widgets/shortcut_help_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../bank/data/bank_api.dart';
+import '../../../shared/services/analytics.dart';
 
 class ReconcilePage extends ConsumerStatefulWidget {
   const ReconcilePage({super.key});
@@ -58,6 +59,17 @@ class _ReconcilePageState extends ConsumerState<ReconcilePage> {
             tooltip: 'Uppdatera',
             onPressed: () => setState(() {}),
             icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'Kortkommandon',
+            onPressed: () => ShortcutHelpOverlay.show(context, const [
+              MapEntry('/', 'Fokus i sökfältet'),
+              MapEntry('A', 'Acceptera markerade (via knappen)'),
+              MapEntry('R', 'Uppdatera listan'),
+              MapEntry('Tab/Shift+Tab', 'Navigera i filter och lista'),
+              MapEntry('?', 'Visa denna hjälp'),
+            ], title: 'Bank – kortkommandon'),
+            icon: const Icon(Icons.help_outline),
           ),
         ],
         bottom: PreferredSize(
@@ -140,8 +152,10 @@ class _ReconcilePageState extends ConsumerState<ReconcilePage> {
                 _searchFocus.requestFocus();
               } else if (keys.contains(LogicalKeyboardKey.keyA)) {
                 // Trigger bulk accept
+                AnalyticsService.logEvent('bank_shortcut_accept');
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tryck på knappen Acceptera för att köra')));
               } else if (keys.contains(LogicalKeyboardKey.keyR)) {
+                AnalyticsService.logEvent('bank_shortcut_refresh');
                 setState(() {});
               } else if (keys.contains(LogicalKeyboardKey.slash) && keys.contains(LogicalKeyboardKey.shift)) {
                 // Shortcut overlay

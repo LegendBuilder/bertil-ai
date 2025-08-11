@@ -14,6 +14,7 @@ ThemeData buildTheme() {
       foregroundColor: scheme.onSurface,
       elevation: 0,
     ),
+    brightness: Brightness.light,
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: scheme.primary,
@@ -21,13 +22,26 @@ ThemeData buildTheme() {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        minimumSize: const Size(52, 48),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
-    cardTheme: const CardThemeData(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      elevation: 1,
+    cardTheme: CardThemeData(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      surfaceTintColor: scheme.surfaceTint,
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
     ),
     listTileTheme: const ListTileThemeData(
       dense: false,
@@ -36,5 +50,6 @@ ThemeData buildTheme() {
     visualDensity: VisualDensity.adaptivePlatformDensity,
   );
 }
+
 
 
