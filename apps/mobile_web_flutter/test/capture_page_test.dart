@@ -5,7 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeUploadController extends UploadController {
-  _FakeUploadController() : super((throw UnimplementedError()));
+  _FakeUploadController()
+      : super(
+          IngestApi(NetworkService().client),
+          // recent docs controller stub
+          RecentDocumentsController(),
+          // queue service future stub
+          Future.value(awaitQueueServiceStub()),
+        );
+
+  static Future<QueueService> awaitQueueServiceStub() async {
+    // Minimal stub that won't be used in this test
+    return QueueService.create();
+  }
 
   @override
   Future<void> uploadBytes(_, __, {required Map<String, dynamic> meta}) async {}
@@ -13,11 +25,8 @@ class _FakeUploadController extends UploadController {
 
 void main() {
   testWidgets('CapturePage shows buttons', (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        uploadControllerProvider.overrideWith((ref) => _FakeUploadController()),
-      ],
-      child: const MaterialApp(home: CapturePage()),
+    await tester.pumpWidget(const ProviderScope(
+      child: MaterialApp(home: CapturePage()),
     ));
     expect(find.text('Fota kvitto'), findsOneWidget);
     expect(find.text('Välj bild från galleri'), findsOneWidget);

@@ -8,11 +8,9 @@ void main() {
   testWidgets('Reports shows shortcut overlay on ?', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: MaterialApp(home: ReportsPage())));
     await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.slash, platform: 'web');
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.shift, platform: 'web');
-    await tester.pump();
-    // Some environments need '?' direct
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.question);
+    // Use logical keys shift + slash to trigger overlay reliably in VM
+    await tester.sendKeyEvent(LogicalKeyboardKey.shift);
+    await tester.sendKeyEvent(LogicalKeyboardKey.slash);
     await tester.pump();
     expect(find.textContaining('Rapporter – kortkommandon'), findsOneWidget);
   });

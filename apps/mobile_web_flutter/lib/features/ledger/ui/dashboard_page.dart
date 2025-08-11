@@ -42,9 +42,12 @@ class DashboardPage extends ConsumerWidget {
                   leading: const Icon(Icons.inbox_outlined, color: Colors.blue),
                   title: Text('Granska ($pendingCount)', style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Autopilot har förslag som väntar på din bekräftelse'),
-                  trailing: ElevatedButton(
-                    onPressed: () => context.go('/inbox'),
-                    child: const Text('Öppna Inbox (G)'),
+                  trailing: SizedBox(
+                    width: 180,
+                    child: ElevatedButton(
+                      onPressed: () => context.go('/inbox'),
+                      child: const Text('Öppna Inbox (G)'),
+                    ),
                   ),
                 ),
               ),

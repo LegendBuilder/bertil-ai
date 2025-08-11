@@ -19,11 +19,9 @@ void main() {
     // Focus traversal: Tab to first bulk button
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
-    // Press ? to open overlay
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.slash, platform: 'web');
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.shift, platform: 'web');
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.question);
+    // Trigger overlay using logical keys (shift + slash) separately to avoid physical key mapping
+    await tester.sendKeyEvent(LogicalKeyboardKey.shift);
+    await tester.sendKeyEvent(LogicalKeyboardKey.slash);
     await tester.pump();
     expect(find.textContaining('kortkommandon', findRichText: true), findsOneWidget);
   });

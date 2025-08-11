@@ -113,14 +113,21 @@ class ReportsPage extends ConsumerWidget {
             const SizedBox(height: 16),
             Text('Export', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-             Row(
+            // Use Wrap to avoid horizontal overflow on smaller screens
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 Builder(builder: (context) {
                   final url = ReportsApi(NetworkService().client).sieExportUrl(DateTime.now().year).toString();
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse(url);
-                      final ok = await canLaunchUrl(uri) && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      final ok = await canLaunchUrl(uri) && await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                        webOnlyWindowName: '_blank',
+                      );
                       if (ok) AnalyticsService.logEvent('export_sie_clicked');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(ok ? 'SIE export skickad till nedladdning' : 'Kunde inte öppna exportlänk')),
@@ -130,13 +137,16 @@ class ReportsPage extends ConsumerWidget {
                     label: const Text('Ladda ner SIE'),
                   );
                 }),
-                const SizedBox(width: 12),
-                 Builder(builder: (context) {
+                Builder(builder: (context) {
                   final url = ReportsApi(NetworkService().client).verificationsPdfUrl(DateTime.now().year).toString();
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse(url);
-                      final ok = await canLaunchUrl(uri) && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      final ok = await canLaunchUrl(uri) && await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                        webOnlyWindowName: '_blank',
+                      );
                       if (ok) AnalyticsService.logEvent('export_pdf_clicked');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(ok ? 'PDF öppnas' : 'Kunde inte öppna PDF-länk')),
@@ -146,8 +156,7 @@ class ReportsPage extends ConsumerWidget {
                     label: const Text('Verifikationslista (PDF)'),
                   );
                 }),
-                const SizedBox(width: 12),
-                 Builder(builder: (context) {
+                Builder(builder: (context) {
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final res = await FilePicker.platform.pickFiles(
@@ -169,15 +178,18 @@ class ReportsPage extends ConsumerWidget {
                     label: const Text('Importera SIE'),
                   );
                 }),
-                const SizedBox(width: 12),
-                 Builder(builder: (context) {
+                Builder(builder: (context) {
                   final year = ref.read(selectedYearProvider);
                   final month = DateTime.now().month;
                   final url = ReportsApi(NetworkService().client).vatReportPdfUrl(year: year, month: month).toString();
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse(url);
-                      final ok = await canLaunchUrl(uri) && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      final ok = await canLaunchUrl(uri) && await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                        webOnlyWindowName: '_blank',
+                      );
                       if (ok) AnalyticsService.logEvent('export_vat_pdf');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(ok ? 'PDF öppnas' : 'Kunde inte öppna PDF-länk')),
@@ -187,15 +199,18 @@ class ReportsPage extends ConsumerWidget {
                     label: const Text('Momsrapport (PDF)')
                   );
                 }),
-                const SizedBox(width: 12),
-                 Builder(builder: (context) {
+                Builder(builder: (context) {
                   final year = ref.read(selectedYearProvider);
                   final month = DateTime.now().month;
                   final url = ReportsApi(NetworkService().client).vatSkvFileUrl(year: year, month: month).toString();
                   return OutlinedButton.icon(
                     onPressed: () async {
                       final uri = Uri.parse(url);
-                      final ok = await canLaunchUrl(uri) && await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      final ok = await canLaunchUrl(uri) && await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                        webOnlyWindowName: '_blank',
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(ok ? 'Momsfil exporteras' : 'Kunde inte öppna momsfil-länk')),
                       );
