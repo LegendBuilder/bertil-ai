@@ -6,6 +6,7 @@ from ..security import get_rate_limit_block_count
 from ..security import require_user
 import redis.asyncio as redis  # type: ignore
 from ..metrics_flow import get_stats
+from ..metrics_kpis import get_kpi_snapshot
 from typing import Optional
 
 router = APIRouter(tags=["metrics"])
@@ -68,6 +69,11 @@ async def metrics_alerts(user=Depends(require_user)) -> dict:
     if rl_blocks > 0:
         alerts.append({"type": "rate_limit", "level": "warning", "message": f"{rl_blocks} requests blocked by rate limiter"})
     return {"alerts": alerts}
+
+
+@router.get("/metrics/kpi")
+async def metrics_kpi(user=Depends(require_user)) -> dict:
+    return get_kpi_snapshot()
 
 
 @router.post("/metrics/event")
