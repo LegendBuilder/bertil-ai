@@ -12,6 +12,7 @@ from sqlalchemy import select
 from ..db import get_session
 from ..models import IntegrationToken
 from datetime import datetime, timedelta
+from ..integrations.fortnox_sync import sync_fortnox
 
 
 router = APIRouter(prefix="/fortnox", tags=["fortnox"])
@@ -90,6 +91,24 @@ async def list_bank(access_token: str | None = None, org_id: int | None = None, 
     client = get_fortnox_client(stub)
     items = await client.list_bank_transactions(access_token or "stub-token")
     return {"items": items}
+
+
+@router.post("/sync")
+async def sync(org_id: int, user=Depends(require_user), session: AsyncSession = Depends(get_session)) -> dict:
+    enabled = settings.fortnox_enabled or os.getenv("FORTNOX_ENABLED", "").lower() == "true"
+    stub = settings.fortnox_stub or os.getenv("FORTNOX_STUB", "").lower() == "true"
+    if not enabled:
+        raise HTTPException(status_code=501, detail="fortnox disabled")
+    try:
+        require_org(user, int(org_id))
+    except Exception:
+        pass
+    row = (await session.execute(select(IntegrationToken).where(IntegrationToken.org_id == int(org_id), IntegrationToken.provider == "fortnox").order_by(IntegrationToken.id.desc()))).scalars().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="no token for org")
+    client = get_fortnox_client(stub)
+    result = await sync_fortnox(session, int(org_id), row.access_token, client)
+    return {"synced": result}
 
 
 
