@@ -1,5 +1,7 @@
 # API-kontrakt (översikt)
 
+> Säkerhet: I `staging/prod` kräver alla skyddade endpoints headern `Authorization: Bearer <jwt>`. `local/test/ci` tillåter stub‑user.
+
 ## Auth (BankID)
 
 - POST /auth/bankid/init → { orderRef, autoStartToken }

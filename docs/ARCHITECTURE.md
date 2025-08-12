@@ -59,3 +59,9 @@ Kända TODOs (hög nivå)
 - Fristående OCR-worker/auto-skalning och mer robust pre-processing.
 - Embeddings/pgvector för leverantörsmappning; a11y-svep; full OTEL till Grafana; säkerhetshärdning; LLM-fallback bakom feature flag.
 
+## Uppdateringar (auth, CORS, UI)
+
+- Auth: JWT‑guards via `require_user` på skyddade endpoints. I `local/test/ci` tillåts stub‑user; i staging/prod krävs Bearer‑token.
+- CORS: Strikt utanför `local/test/ci` (tillåtlista via `CORS_ALLOW_ORIGINS`).
+- UI‑flöde: En‑knapp “Fota/Ladda upp” → OCR → AI enhanced autopost (fallback till legacy) → “Bokfört ✅”.
+

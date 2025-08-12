@@ -25,4 +25,9 @@
 
 - Secrets Manager för JWT-sekret, API-nycklar. Inga nycklar i repo.
 
+## Autentisering
+
+- Bearer‑JWT på API. `local/test/ci` kan använda stub‑identitet för utveckling; staging/prod kräver giltig token.
+- BankID via broker (Signicat) planerad: `POST /auth/bankid/init`, `GET /auth/bankid/status` → JWT utfärdas vid komplett status.
+
 

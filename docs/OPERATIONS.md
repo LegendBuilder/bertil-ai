@@ -15,6 +15,17 @@
 - OTLP exporter (valfri) → Grafana Tempo/Loki/Prom.
 - DLP/PII: inga personnummer i loggar (maskas i UI och centrala loggers har allow-list).
 
+## Policy (auth & CORS)
+
+- `local/test/ci`: stub‑auth tillåten; CORS kan vara `*`.
+- `staging/prod`: Bearer‑JWT krävs för alla skyddade endpoints; CORS måste vara låst till kända origin.
+
+## Runbooks (kort)
+
+- BankID‑störning: tillåt manuell demo‑login, fallback till stub endast i `local/test`.
+- LLM‑fel/hög latens: slå av enhanced via feature flag; fallback till legacy `/ai/auto-post` fortsätter.
+- S3 Object Lock delete‑fel: kontrollera retention/Legal Hold; följ WORM‑procedur.
+
 # Drift & observability
 
 - IaC: Terraform (S3 Object Lock, RDS, OpenSearch, Secrets)
