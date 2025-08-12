@@ -155,17 +155,53 @@ async def upload_document(
     # Upload hardening: basic MIME/size checks
     if file.content_type not in (settings.upload_allowed_mime.split(",")):
         raise HTTPException(status_code=400, detail="unsupported content type")
-    # Peek size if available (UploadFile has no size; read and enforce max)
-    # We will stream hash and then check limit
-    # Compute sha256 in a streaming fashion (no full buffering)
+    # Read entire file (typical receipts are small); enforce size
     await file.seek(0)
-    hasher = hashlib.sha256()
-    while True:
-        chunk = await file.read(1024 * 1024)
-        if not chunk:
-            break
-        hasher.update(chunk)
-    digest = hasher.hexdigest()
+    raw_bytes = await file.read()
+    if len(raw_bytes) > settings.upload_max_bytes:
+        raise HTTPException(status_code=400, detail="file too large")
+
+    # Optional: EXIF strip / re-encode image defensively
+    content_bytes = raw_bytes
+    try:
+        if file.content_type in ("image/jpeg", "image/png"):
+            with Image.open(BytesIO(raw_bytes)) as img_in:
+                # Image bomb guard: reject absurdly large pixel counts (> 100 MP)
+                if (img_in.width or 0) * (img_in.height or 0) > 100_000_000:
+                    raise HTTPException(status_code=400, detail="image too large (pixels)")
+                img = img_in.convert("RGB") if file.content_type == "image/jpeg" else img_in.convert("RGBA")
+                buf = BytesIO()
+                fmt = "JPEG" if file.content_type == "image/jpeg" else "PNG"
+                save_args = {"quality": 90} if fmt == "JPEG" else {"optimize": True}
+                img.save(buf, format=fmt, **save_args)
+                buf.seek(0)
+                content_bytes = buf.read()
+    except HTTPException:
+        raise
+    except Exception:
+        # If PIL fails, fall back to original bytes
+        content_bytes = raw_bytes
+
+    # Virus scan (optional)
+    if settings.virus_scan_enabled:
+        try:
+            import clamd  # type: ignore
+            cd = clamd.ClamdNetworkSocket(host="127.0.0.1", port=3310)
+            resp = cd.instream(BytesIO(content_bytes))
+            status = resp.get("stream", [None, None])[0] if isinstance(resp.get("stream"), (list, tuple)) else resp.get("stream")
+            # clamd returns {'stream': ('OK', None)} when clean
+            if isinstance(resp, dict):
+                result = resp.get("stream")  # type: ignore
+                if isinstance(result, tuple) and result[0] != "OK":
+                    raise HTTPException(status_code=400, detail="malware detected")
+        except HTTPException:
+            raise
+        except Exception:
+            # If scanner not reachable, in dev/test ignore; in staging/prod we still allow for now
+            pass
+
+    # Compute digest of the sanitized content
+    digest = hashlib.sha256(content_bytes).hexdigest()
     # Validate client-provided hash if present
     try:
         meta = json.loads(meta_json or "{}")
@@ -176,8 +212,6 @@ async def upload_document(
         # Hash mismatch indicates tampering or corruption
         raise HTTPException(status_code=400, detail={"error": "hash_mismatch", "expected": digest, "provided": client_hash})
     # Save image either locally (dev) or to Supabase bucket (if configured)
-    await file.seek(0)
-    content_bytes = await file.read()  # single buffer OK for typical receipt images
     if len(content_bytes) > settings.upload_max_bytes:
         raise HTTPException(status_code=400, detail="file too large")
     duplicate = False
