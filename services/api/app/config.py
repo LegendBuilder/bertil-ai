@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     # Rate limiting (naive, in-process)
     rate_limit_enabled: bool = True
     rate_limit_per_minute: int = 120
+    rate_limit_redis_url: str | None = None  # optional Redis for distributed limiting
+
+    # Virus scan
+    virus_scan_enabled: bool = False
+    virus_scan_engine: str = "clamav"  # future use
 
     # Fortnox Integration
     fortnox_enabled: bool = False

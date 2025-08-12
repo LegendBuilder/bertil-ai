@@ -21,7 +21,7 @@
 1) Security & Access Control
 - RBAC roles + organization scoping enforced at DB/query level
 - Rate limiting + brute‑force protection; per‑IP/origin policy
-- File upload hardening: MIME/size caps, imagebomb protections, virus/malware scan
+- File upload hardening: MIME/size caps, imagebomb protections, virus/malware scan (ClamAV)
 - Secret management: AWS Secrets Manager in all non‑local envs; key rotation
 
 2) Identity & Auth
