@@ -89,6 +89,8 @@ class RateLimiter:
 
 
 _rate_limiter: RateLimiter | None = None
+_rate_redis = None  # type: ignore[var-annotated]
+_rate_limit_blocks: int = 0
 
 
 async def enforce_rate_limit(request: Request) -> None:
@@ -97,15 +99,40 @@ async def enforce_rate_limit(request: Request) -> None:
     Disabled if settings.rate_limit_enabled is False.
     """
     from time import time as _time
+    global _rate_limiter, _rate_limit_blocks, _rate_redis
     if not settings.rate_limit_enabled:
         return
-    global _rate_limiter
-    if _rate_limiter is None:
-        _rate_limiter = RateLimiter(max_per_minute=settings.rate_limit_per_minute)
     client_ip = request.client.host if request.client else "unknown"
     key = f"{client_ip}:{request.url.path}"
+    # Try Redis-based limiting if configured
+    if settings.rate_limit_redis_url:
+        try:
+            if _rate_redis is None:
+                import redis.asyncio as redis  # type: ignore
+                _rate_redis = redis.from_url(settings.rate_limit_redis_url, decode_responses=True)
+            r = _rate_redis
+            window_key = f"rl:{key}"
+            # Use INCR with TTL 60s
+            current = await r.incr(window_key)
+            if current == 1:
+                await r.expire(window_key, 60)
+            if current > settings.rate_limit_per_minute:
+                _rate_limit_blocks += 1
+                raise HTTPException(status_code=429, detail="rate limit exceeded")
+            return
+        except Exception:
+            # Fallback to in-process limiter if Redis not available
+            pass
+    # In-process limiter fallback
+    if _rate_limiter is None:
+        _rate_limiter = RateLimiter(max_per_minute=settings.rate_limit_per_minute)
     if not _rate_limiter.allow(key, _time()):
+        _rate_limit_blocks += 1
         raise HTTPException(status_code=429, detail="rate limit exceeded")
+
+
+def get_rate_limit_block_count() -> int:
+    return _rate_limit_blocks
 
 
 

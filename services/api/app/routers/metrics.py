@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Response, Depends
 from ..config import settings
+from ..security import get_rate_limit_block_count
 from ..security import require_user
 import redis.asyncio as redis  # type: ignore
 from ..metrics_flow import get_stats
@@ -62,6 +63,10 @@ async def metrics_alerts(user=Depends(require_user)) -> dict:
     for k, v in _fail_counters.items():
         if v > 0:
             alerts.append({"type": f"{k}_failures", "level": "warning", "message": f"{v} failures in {k}"})
+    # Rate limit blocks
+    rl_blocks = get_rate_limit_block_count()
+    if rl_blocks > 0:
+        alerts.append({"type": "rate_limit", "level": "warning", "message": f"{rl_blocks} requests blocked by rate limiter"})
     return {"alerts": alerts}
 
 

@@ -63,6 +63,33 @@ async def worm_status(doc_id: str, session: AsyncSession = Depends(get_session),
         return {"backend": "local", "path": uri}
 
 
+@router.get("/worm/bucket/status")
+async def worm_bucket_status(user=Depends(require_user)) -> dict:
+    """Report S3 bucket Object Lock / region policy when configured."""
+    if not settings.s3_bucket:
+        return {"backend": "local/dev", "object_lock": None}
+    if not (settings.aws_region and settings.aws_access_key_id and settings.aws_secret_access_key):
+        raise HTTPException(status_code=501, detail="aws not configured")
+    try:
+        import boto3  # type: ignore
+        s3 = boto3.client(
+            "s3",
+            region_name=settings.aws_region,
+            aws_access_key_id=settings.aws_access_key_id,
+            aws_secret_access_key=settings.aws_secret_access_key,
+        )
+        lock_cfg = s3.get_object_lock_configuration(Bucket=settings.s3_bucket)
+        bucket_loc = s3.get_bucket_location(Bucket=settings.s3_bucket)
+        return {
+            "backend": "s3",
+            "bucket": settings.s3_bucket,
+            "object_lock": lock_cfg.get("ObjectLockConfiguration"),
+            "region": bucket_loc.get("LocationConstraint"),
+        }
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(status_code=502, detail=f"s3 error: {e}")
+
+
 
 
 
