@@ -26,6 +26,13 @@
 - LLM‑fel/hög latens: slå av enhanced via feature flag; fallback till legacy `/ai/auto-post` fortsätter.
 - S3 Object Lock delete‑fel: kontrollera retention/Legal Hold; följ WORM‑procedur.
 
+## WORM smoke-test
+
+- Endpoint: `POST /storage/worm/smoke-test` (prod/staging)
+  - Skriver testobjekt under prefix `worm_test/` med COMPLIANCE retention (1 dag)
+  - Försöker radera direkt och förväntar `AccessDenied` (delete denied)
+  - Använd endast i kontrollerade miljöer
+
 # Drift & observability
 
 - IaC: Terraform (S3 Object Lock, RDS, OpenSearch, Secrets)

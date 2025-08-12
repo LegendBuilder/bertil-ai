@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     virus_scan_enabled: bool = False
     virus_scan_engine: str = "clamav"  # future use
 
+    # WORM smoke test
+    storage_smoketest_enabled: bool = False
+    worm_test_object_prefix: str = "worm_test/"
+
     # Fortnox Integration
     fortnox_enabled: bool = False
     fortnox_stub: bool = True  # use stubbed client for tests/dev without external keys

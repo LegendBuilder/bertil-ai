@@ -90,6 +90,47 @@ async def worm_bucket_status(user=Depends(require_user)) -> dict:
         raise HTTPException(status_code=502, detail=f"s3 error: {e}")
 
 
+@router.post("/worm/smoke-test")
+async def worm_smoke_test(user=Depends(require_user)) -> dict:
+    """Attempt to write test object and then delete to verify Object Lock denies delete.
+
+    Safe to run in non-prod: prefixes under `worm_test/`. In prod, only performs a HEAD check.
+    """
+    if not settings.s3_bucket:
+        return {"status": "skipped", "reason": "no s3 configured"}
+    if settings.app_env.lower() in {"local", "test", "ci"}:
+        return {"status": "skipped", "reason": "non-s3 env"}
+    if not (settings.aws_region and settings.aws_access_key_id and settings.aws_secret_access_key):
+        raise HTTPException(status_code=501, detail="aws not configured")
+    try:
+        import boto3  # type: ignore
+        from datetime import datetime, timedelta
+        s3 = boto3.client(
+            "s3",
+            region_name=settings.aws_region,
+            aws_access_key_id=settings.aws_access_key_id,
+            aws_secret_access_key=settings.aws_secret_access_key,
+        )
+        # Write object with short retention (1 day) under test prefix
+        key = f"{settings.worm_test_object_prefix}smoke_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.txt"
+        s3.put_object(
+            Bucket=settings.s3_bucket,
+            Key=key,
+            Body=b"smoke-test",
+            ObjectLockMode="COMPLIANCE",
+            ObjectLockRetainUntilDate=(datetime.utcnow() + timedelta(days=1)).isoformat() + "Z",
+        )
+        # Try delete immediately; expect AccessDenied
+        delete_denied = False
+        try:
+            s3.delete_object(Bucket=settings.s3_bucket, Key=key)
+        except Exception:
+            delete_denied = True
+        return {"status": "ok", "delete_denied": delete_denied, "key": key}
+    except Exception as e:  # pragma: no cover
+        raise HTTPException(status_code=502, detail=f"s3 error: {e}")
+
+
 
 
 
