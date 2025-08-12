@@ -6,10 +6,10 @@ from services.api.app.main import app
 
 
 def test_vat_declaration_snapshot_domestic_and_rc():
-    client = TestClient(app)
-    period = "2025-05"
-    # Domestic 25%
-    client.post(
+    with TestClient(app) as client:
+        period = "2025-05"
+        # Domestic 25%
+        client.post(
         "/verifications",
         json={
             "org_id": 1,
@@ -25,8 +25,8 @@ def test_vat_declaration_snapshot_domestic_and_rc():
             ],
         },
     )
-    # Reverse charge base
-    client.post(
+        # Reverse charge base
+        client.post(
         "/verifications",
         json={
             "org_id": 1,
@@ -42,20 +42,20 @@ def test_vat_declaration_snapshot_domestic_and_rc():
             ],
         },
     )
-    r = client.get("/reports/vat/declaration", params={"period": period})
-    assert r.status_code == 200
-    boxes = r.json()["boxes"]
-    # Snapshot expectations: 05 includes SE25 base (>=100), RC base excluded from 05; 30 & 48 reflect 2611/2615 and 2641/2645
-    assert boxes["05"] >= 100.0
-    assert boxes["30"] >= 25.0
-    assert boxes["48"] >= 25.0
+        r = client.get("/reports/vat/declaration", params={"period": period})
+        assert r.status_code == 200
+        boxes = r.json()["boxes"]
+        # Snapshot expectations: 05 includes SE25 base (>=100), RC base excluded from 05; 30 & 48 reflect 2611/2615 and 2641/2645
+        assert boxes["05"] >= 100.0
+        assert boxes["30"] >= 25.0
+        assert boxes["48"] >= 25.0
 
 
 def test_vat_declaration_representation_and_drivmedel_edges():
-    client = TestClient(app)
-    period = "2025-06"
-    # Representation (50% non-deductible VAT on meals). We simulate via base SE12 and input VAT on 2641
-    client.post(
+    with TestClient(app) as client:
+        period = "2025-06"
+        # Representation (50% non-deductible VAT on meals). We simulate via base SE12 and input VAT on 2641
+        client.post(
         "/verifications",
         json={
             "org_id": 1,
@@ -70,8 +70,8 @@ def test_vat_declaration_representation_and_drivmedel_edges():
             ],
         },
     )
-    # Drivmedel (limited deductibility) — simulate as SE25 with reduced input VAT debit
-    client.post(
+        # Drivmedel (limited deductibility) — simulate as SE25 with reduced input VAT debit
+        client.post(
         "/verifications",
         json={
             "org_id": 1,
@@ -86,14 +86,14 @@ def test_vat_declaration_representation_and_drivmedel_edges():
             ],
         },
     )
-    r = client.get("/reports/vat/declaration", params={"period": period})
-    assert r.status_code == 200
-    boxes = r.json()["boxes"]
-    # Base boxes reflect full bases; input VAT (48) reflects partial deductibles
-    assert boxes["06"] >= 100.0
-    assert boxes["05"] >= 100.0
-    # Input VAT should equal 6.0 + 12.5 = 18.5
-    assert abs(boxes["48"] - 18.5) < 0.01
+        r = client.get("/reports/vat/declaration", params={"period": period})
+        assert r.status_code == 200
+        boxes = r.json()["boxes"]
+        # Base boxes reflect full bases; input VAT (48) reflects partial deductibles
+        assert boxes["06"] >= 100.0
+        assert boxes["05"] >= 100.0
+        # Input VAT should equal 6.0 + 12.5 = 18.5
+        assert abs(boxes["48"] - 18.5) < 0.01
 
 
 

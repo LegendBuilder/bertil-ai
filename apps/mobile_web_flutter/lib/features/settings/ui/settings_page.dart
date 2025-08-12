@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/provider/auth_providers.dart';
+import '../../../shared/providers/feature_flags_provider.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -22,6 +23,16 @@ class SettingsPage extends ConsumerWidget {
             ] else ...[
               const Text('Ej inloggad'),
             ],
+            const SizedBox(height: 16),
+            Consumer(builder: (context, ref, _) {
+              final enabled = ref.watch(enhancedAutomationProvider);
+              return SwitchListTile(
+                title: const Text('Förstärkt automation'),
+                subtitle: const Text('Använd förbättrade AI-förklaringar och insikter'),
+                value: enabled,
+                onChanged: (v) => ref.read(enhancedAutomationProvider.notifier).state = v,
+              );
+            }),
           ],
         ),
       ),

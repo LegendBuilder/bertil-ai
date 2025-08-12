@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ..db import get_session
+from ..security import require_user
 from ..config import settings
 from ..models import Document
 
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/storage", tags=["storage"])
 
 
 @router.get("/worm/{doc_id}")
-async def worm_status(doc_id: str, session: AsyncSession = Depends(get_session)) -> dict:
+async def worm_status(doc_id: str, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     d = (await session.execute(select(Document).where(Document.hash_sha256 == doc_id))).scalars().first()
     if not d:
         raise HTTPException(status_code=404, detail="document not found")
@@ -60,6 +61,9 @@ async def worm_status(doc_id: str, session: AsyncSession = Depends(get_session))
     else:
         # Local WORM-like store
         return {"backend": "local", "path": uri}
+
+
+
 
 
 

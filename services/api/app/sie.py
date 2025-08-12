@@ -44,6 +44,7 @@ async def generate_sie(session: AsyncSession, year: int) -> str:
             out_rows.append(("9999", -total))
             total = 0.0
         for acc, amount in out_rows:
+            # SIE format typically uses fields: account, object, amount. Keep empty object as "{}"
             lines.append(f"#TRANS {acc} {{}} {amount:.2f}")
     return "\n".join(lines) + "\n"
 

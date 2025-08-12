@@ -143,7 +143,7 @@ class DocumentDetailPage extends ConsumerWidget {
                                 orElse: () => doc.extractedFields.first,
                               ).value;
                               final api = IngestApi(NetworkService().client);
-                              final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor, vatCode: _VatPickerState.lastSelectedCode);
+                              final res = await api.autoPostFromExtracted(documentId: id, total: total, dateIso: dateIso, vendor: vendor, vatCode: _VatPickerState.lastSelectedCode, preferEnhanced: true);
                               AnalyticsService.logEvent('doc_autopost_clicked', {"doc_id": id});
                               // On success, mark doc as done
                               // ignore: use_build_context_synchronously

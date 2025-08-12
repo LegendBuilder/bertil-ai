@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
+from ..security import require_user
 from ..ai import suggest_account_and_vat, build_entries, build_entries_with_code
 from ..routers.verifications import VerificationIn, EntryIn, create_verification  # reuse model & logic
 
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.post("/auto-post")
-async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_session)) -> dict:
+async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     # Expecting extracted fields: total, date, vendor
     try:
         total = float(body["total"])  # type: ignore

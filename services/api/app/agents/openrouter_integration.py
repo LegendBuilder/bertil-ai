@@ -179,7 +179,12 @@ class OpenRouterClient:
         temperature: float = 0.1
     ) -> Dict[str, Any]:
         """Make API call to OpenRouter."""
-        
+        from ..metrics_llm import record_request, record_error, observe_latency
+        provider_label = "openrouter"
+        model_label = model
+        record_request(provider_label, model_label, task_type)
+        import time as _time
+        _start = _time.perf_counter()
         # Increment counter
         self.requests_today += 1
         
@@ -190,22 +195,26 @@ class OpenRouterClient:
             "Content-Type": "application/json"
         }
         
-        payload = {
-            "model": model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "Du är en svensk bokföringsexpert. Svara alltid med strukturerad JSON."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": temperature,
-            "max_tokens": 1000,
-            "response_format": {"type": "json_object"}  # Force JSON response
-        }
+        # Support both text prompts and prebuilt messages (e.g., for vision OCR)
+        if isinstance(prompt, dict) and "messages" in prompt:
+            payload = {"model": model, **prompt, "temperature": temperature, "max_tokens": 1000}
+        else:
+            payload = {
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Du är en svensk bokföringsexpert. Svara alltid med strukturerad JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "temperature": temperature,
+                "max_tokens": 1000,
+                "response_format": {"type": "json_object"}
+            }
         
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -219,11 +228,16 @@ class OpenRouterClient:
                     
                     # Parse JSON response
                     try:
-                        return json.loads(content)
+                        out = json.loads(content)
+                        observe_latency(provider_label, model_label, task_type, _time.perf_counter() - _start)
+                        return out
                     except json.JSONDecodeError:
+                        observe_latency(provider_label, model_label, task_type, _time.perf_counter() - _start)
                         return {"raw_response": content, "task_type": task_type}
                 else:
                     error = await response.text()
+                    record_error(provider_label, model_label, task_type)
+                    observe_latency(provider_label, model_label, task_type, _time.perf_counter() - _start)
                     raise Exception(f"OpenRouter error: {error}")
     
     def _check_daily_limit(self) -> bool:
@@ -237,22 +251,22 @@ class OpenRouterClient:
         
         return self.requests_today < self.config.daily_free_limit
     
-    def _build_ocr_prompt(self, image_data: bytes) -> str:
-        """Build OCR extraction prompt."""
-        
-        # For visual models, we'd need to encode image
-        # This is simplified - real implementation needs base64 encoding
-        return """
-        Extract text from this Swedish receipt/invoice.
-        Focus on:
-        - Vendor name (företag)
-        - Total amount (belopp)
-        - VAT/moms details
-        - Date (datum)
-        - Invoice number (fakturanummer)
-        
-        Return all text found.
-        """
+    def _build_ocr_prompt(self, image_data: bytes) -> Dict[str, Any]:
+        """Build OCR extraction payload for vision models using Base64 image content."""
+        import base64
+        b64 = base64.b64encode(image_data).decode("ascii")
+        return {
+            "messages": [
+                {"role": "system", "content": "Du är en svensk OCR-assistent."},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Extrahera text och kvittodata (företag, belopp, moms, datum, fakturanr)."},
+                        {"type": "input_image", "image_url": f"data:image/jpeg;base64,{b64}"},
+                    ],
+                },
+            ]
+        }
     
     def _build_swedish_parsing_prompt(self, ocr_text: str) -> str:
         """Build Swedish parsing prompt."""

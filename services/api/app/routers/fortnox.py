@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..config import settings
 from ..fortnox_client import get_fortnox_client
+from ..security import require_user
 
 
 router = APIRouter(prefix="/fortnox", tags=["fortnox"])
 
 
 @router.get("/oauth/start")
-async def oauth_start() -> dict:
+async def oauth_start(user=Depends(require_user)) -> dict:
     enabled = settings.fortnox_enabled or os.getenv("FORTNOX_ENABLED", "").lower() == "true"
     stub = settings.fortnox_stub or os.getenv("FORTNOX_STUB", "").lower() == "true"
     if not enabled:
@@ -22,7 +23,7 @@ async def oauth_start() -> dict:
 
 
 @router.post("/oauth/callback")
-async def oauth_callback(body: dict) -> dict:
+async def oauth_callback(body: dict, user=Depends(require_user)) -> dict:
     enabled = settings.fortnox_enabled or os.getenv("FORTNOX_ENABLED", "").lower() == "true"
     stub = settings.fortnox_stub or os.getenv("FORTNOX_STUB", "").lower() == "true"
     if not enabled:
@@ -37,7 +38,7 @@ async def oauth_callback(body: dict) -> dict:
 
 
 @router.get("/receipts")
-async def list_receipts(access_token: str) -> dict:
+async def list_receipts(access_token: str, user=Depends(require_user)) -> dict:
     enabled = settings.fortnox_enabled or os.getenv("FORTNOX_ENABLED", "").lower() == "true"
     stub = settings.fortnox_stub or os.getenv("FORTNOX_STUB", "").lower() == "true"
     if not enabled:
@@ -48,7 +49,7 @@ async def list_receipts(access_token: str) -> dict:
 
 
 @router.get("/bank/transactions")
-async def list_bank(access_token: str) -> dict:
+async def list_bank(access_token: str, user=Depends(require_user)) -> dict:
     enabled = settings.fortnox_enabled or os.getenv("FORTNOX_ENABLED", "").lower() == "true"
     stub = settings.fortnox_stub or os.getenv("FORTNOX_STUB", "").lower() == "true"
     if not enabled:

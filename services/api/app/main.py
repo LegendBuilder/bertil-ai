@@ -25,8 +25,10 @@ def create_app() -> FastAPI:
             pass
     app = FastAPI(title="Bertil AI API", version="0.0.1")
 
-    # CORS for dev: allow any origin without credentials to avoid preflight failures in browsers
+    # CORS: strict by default outside local; configurable via env
     allowed_origins = settings.cors_allow_origins.split(",")
+    if settings.app_env.lower() not in {"local", "test", "ci"} and allowed_origins == ["*"]:
+        allowed_origins = []  # default deny-all unless explicitly configured
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if allowed_origins == ["*"] else allowed_origins,
@@ -42,16 +44,47 @@ def create_app() -> FastAPI:
 
     @app.get("/readiness")
     async def readiness() -> dict:
-        # Simple readiness: DB metadata accessible, local WORM dir exists
+        # Readiness: DB accessible and storage backend reachable (best-effort)
         db_ok = False
+        storage_ok = False
+        queue_ok = True
         try:
             async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+                await conn.run_sync(lambda c: Base.metadata.create_all(bind=c))
             db_ok = True
         except Exception:
             db_ok = False
-        storage_ok = True  # local stub
-        return {"status": "ready" if db_ok and storage_ok else "degraded", "dependencies": {"db": db_ok, "storage": storage_ok}}
+        # Storage check
+        try:
+            if settings.s3_bucket and settings.aws_region and settings.aws_access_key_id and settings.aws_secret_access_key:
+                import boto3  # type: ignore
+                s3 = boto3.client(
+                    "s3",
+                    region_name=settings.aws_region,
+                    aws_access_key_id=settings.aws_access_key_id,
+                    aws_secret_access_key=settings.aws_secret_access_key,
+                )
+                s3.head_bucket(Bucket=settings.s3_bucket)
+                storage_ok = True
+            elif settings.supabase_url and settings.supabase_service_role_key and settings.supabase_bucket:
+                storage_ok = True  # assume reachable; deeper probe would require HTTP
+            else:
+                # local WORM store existence check
+                from pathlib import Path as _Path
+                storage_ok = _Path(".worm_store").exists()
+        except Exception:
+            storage_ok = False
+        # Queue check (optional OCR queue)
+        try:
+            if settings.ocr_queue_url:
+                import redis.asyncio as _redis  # type: ignore
+                r = _redis.from_url(settings.ocr_queue_url, decode_responses=False)
+                await r.ping()
+            queue_ok = True
+        except Exception:
+            queue_ok = False
+        status_txt = "ready" if (db_ok and storage_ok and queue_ok) else "degraded"
+        return {"status": status_txt, "dependencies": {"db": db_ok, "storage": storage_ok, "queue": queue_ok}}
 
     # Include routers
     app.include_router(auth.router)
@@ -123,9 +156,21 @@ def create_app() -> FastAPI:
         # Create tables for local/dev (SQLite). In production use Alembic migrations.
         async with engine.begin() as conn:
             await conn.run_sync(lambda c: Base.metadata.create_all(bind=c))
-        # For test/CI, purge volatile transactional tables to isolate each TestClient
-        import os as _os
-        if _os.environ.get("APP_ENV", "local").lower() in ("test", "ci"):
+        # Dev-only schema adjustments and data purge moved behind env guard
+        if settings.app_env.lower() in {"local", "test", "ci"}:
+            try:
+                from sqlalchemy import text as _text
+                async with engine.begin() as conn:
+                    try:
+                        res = await conn.execute(_text("PRAGMA table_info('verifications')"))
+                        cols = {row[1] for row in res.fetchall()}  # type: ignore[index]
+                        if "vat_code" not in cols:
+                            await conn.execute(_text("ALTER TABLE verifications ADD COLUMN vat_code VARCHAR(20)"))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # Only purge in dev/test
             from sqlalchemy import text as _text
             async with engine.begin() as conn:
                 try:
@@ -133,14 +178,12 @@ def create_app() -> FastAPI:
                         await conn.execute(_text(f"DELETE FROM {tbl}"))
                 except Exception:
                     pass
-        # Seed core VAT codes so tests relying on listing don't fail on empty DB
-        try:
-            from .routers.admin import seed_vat_codes  # lazy import
-            import anyio
-            await seed_vat_codes()  # type: ignore[func-returns-value]
-        except Exception:
-            # Non-fatal in production; tests can seed explicitly
-            pass
+            # Seed VAT codes for tests/dev
+            try:
+                from .routers.admin import seed_vat_codes  # lazy import
+                await seed_vat_codes()  # type: ignore[func-returns-value]
+            except Exception:
+                pass
 
         # OpenTelemetry setup (optional)
         if settings.otlp_endpoint:

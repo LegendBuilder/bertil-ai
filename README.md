@@ -86,9 +86,31 @@ Flutter-klient
 2. Kör appen (t.ex. web):
    - flutter run -d chrome
 3. Kör i Android emulator (exempel):
-   - uvicorn services.api.app.main:app --reload
+   - Starta API lokalt: `uvicorn services.api.app.main:app --reload`
    - cd apps\mobile_web_flutter
    - flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:8000
+
+Docker (API + worker + Postgres + Redis)
+
+1. Skapa `.env` i repo-roten (valfritt för OpenRouter/Redis cache):
+   ```
+   LLM_PROVIDER=openrouter
+   OPENROUTER_API_KEY=sk-or-...
+   LLM_MODEL=meta-llama/llama-3.1-70b-instruct:free
+   LLM_TEMPERATURE=0.1
+   LLM_CACHE_URL=redis://redis:6379/1
+   LLM_CACHE_TTL_HOURS=24
+   LLM_FALLBACK_ENABLED=true
+   ```
+2. Starta stacken:
+   - `docker compose up -d --build`
+3. Verifiera:
+   - `curl http://localhost:8000/healthz`
+   - `curl http://localhost:8000/admin/kb/status`
+
+Flutter enhanced AI
+
+- Klienten anropar `/ai/enhanced/auto-post` när förbättrad automation är aktiverad i appens inställningar; annars faller den tillbaka till `/ai/auto-post` automatiskt vid fel.
 
 Miljövariabler
 

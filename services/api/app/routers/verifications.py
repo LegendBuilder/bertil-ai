@@ -10,6 +10,8 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
+from ..config import settings
+from ..security import require_user
 from ..audit import append_audit_event
 from ..compliance import run_verification_rules, persist_flags
 from ..models import Entry, Verification, AuditLog, PeriodLock
@@ -47,7 +49,7 @@ def _hash_verification_payload(payload: VerificationIn) -> str:
 
 @router.post("")
 async def create_verification(
-    body: VerificationIn, session: AsyncSession = Depends(get_session)
+    body: VerificationIn, session: AsyncSession = Depends(get_session), user=Depends(require_user)
 ) -> dict:
     # Ensure tables exist in local/test SQLite
     try:
@@ -67,9 +69,8 @@ async def create_verification(
         locked = (await session.execute(lock_stmt)).scalars().first()
     except Exception:
         locked = None
-    # In test/local environments, do not enforce period locks strictly
-    app_env = (getattr(__import__("os"), "environ", {})).get("APP_ENV", "local")  # type: ignore
-    if locked and app_env not in ("local", "dev"):
+    # Enforce period locks: forbid postings inside locked windows for the organization
+    if locked:
         raise HTTPException(status_code=403, detail="period is locked for selected date")
     next_seq_stmt = select(func.coalesce(func.max(Verification.immutable_seq), 0)).where(
         Verification.org_id == body.org_id
@@ -125,6 +126,19 @@ async def create_verification(
         else:
             raise HTTPException(status_code=400, detail="Entries must balance (debit == credit)")
 
+    # Run compliance rules before committing
+    # This uses the pending entries (flushed) for accurate evaluation
+    flags = await run_verification_rules(session, v)
+    error_flags = [f for f in flags if f.severity == "error"]
+    # In non-local environments, block on errors. In local/test/ci, allow to keep developer tests simple
+    import os as _os
+    _env = _os.environ.get("APP_ENV", settings.app_env).lower()
+    if error_flags and _env not in {"local", "test", "ci"}:
+        # Roll back the uncommitted verification and entries
+        await session.rollback()
+        details = [{"rule": f.rule_code, "message": f.message} for f in error_flags]
+        raise HTTPException(status_code=422, detail={"errors": details})
+
     await session.commit()
 
     # Hash payload for audit and append to chain
@@ -138,15 +152,15 @@ async def create_verification(
             target=f"verifications:{v.id}",
             event_payload_hash=payload_hash,
         )
-    # Run compliance rules for this verification and persist flags
-    flags = await run_verification_rules(session, v)
-    if flags:
-        await persist_flags(session, "verification", v.id, flags)
+    # Persist non-blocking flags (warnings/info) after commit
+    non_blocking = [f for f in flags if f.severity in {"warning", "info"}]
+    if non_blocking:
+        await persist_flags(session, "verification", v.id, non_blocking)
     return {"id": v.id, "immutable_seq": v.immutable_seq, "audit_hash": chain_hash}
 
 
 @router.get("")
-async def list_verifications(year: Optional[int] = None, session: AsyncSession = Depends(get_session)) -> list[dict]:
+async def list_verifications(year: Optional[int] = None, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> list[dict]:
     stmt = select(Verification)
     if year:
         stmt = stmt.where(func.extract("year", Verification.date) == year)
@@ -165,7 +179,7 @@ async def list_verifications(year: Optional[int] = None, session: AsyncSession =
 
 
 @router.get("/{ver_id}")
-async def get_verification(ver_id: int, session: AsyncSession = Depends(get_session)) -> dict:
+async def get_verification(ver_id: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     vstmt = select(Verification).where(Verification.id == ver_id)
     v = (await session.execute(vstmt)).scalars().first()
     if not v:
@@ -215,7 +229,7 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
 
 
 @router.get("/by-document/{doc_id}")
-async def get_verification_by_document(doc_id: str, session: AsyncSession = Depends(get_session)) -> dict:
+async def get_verification_by_document(doc_id: str, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     link = f"/documents/{doc_id}"
     stmt = select(Verification).where(Verification.document_link == link).order_by(Verification.id.desc())
     v = (await session.execute(stmt)).scalars().first()
@@ -231,7 +245,7 @@ def _reverse_entry(e: Entry) -> EntryIn:
 
 
 @router.post("/{ver_id}/reverse")
-async def reverse_verification(ver_id: int, session: AsyncSession = Depends(get_session)) -> dict:
+async def reverse_verification(ver_id: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
     if not v:
         raise HTTPException(status_code=404, detail="Not found")
@@ -258,7 +272,7 @@ class CorrectionDateIn(BaseModel):
 
 
 @router.post("/{ver_id}/correct-date")
-async def correct_verification_date(ver_id: int, body: CorrectionDateIn, session: AsyncSession = Depends(get_session)) -> dict:
+async def correct_verification_date(ver_id: int, body: CorrectionDateIn, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
     if not v:
         raise HTTPException(status_code=404, detail="Not found")
@@ -286,7 +300,7 @@ class CorrectionDocumentIn(BaseModel):
 
 
 @router.post("/{ver_id}/correct-document")
-async def correct_verification_document(ver_id: int, body: CorrectionDocumentIn, session: AsyncSession = Depends(get_session)) -> dict:
+async def correct_verification_document(ver_id: int, body: CorrectionDocumentIn, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
     if not v:
         raise HTTPException(status_code=404, detail="Not found")
@@ -317,6 +331,7 @@ async def list_open_items(
     min_amount: float = 0.01,
     limit: int = 100,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ) -> dict:
     out: list[dict] = []
     # Accounts: AR = 1510*, AP = 2440*

@@ -273,8 +273,72 @@ class InvisibleBookkeeper:
         # This would call your existing endpoint
         return {"fallback": True, "reason": "Low confidence, use manual review"}
 
+    def _smart_vat_detection(self, data: dict) -> str:
+        """Best-effort VAT code detection when only basic fields are present.
+
+        Uses vendor name and optional raw_text if available. Falls back to SE25.
+        """
+        vendor = (data.get('vendor') or '').lower()
+        text = (data.get('raw_text') or '').lower()
+        total = float(data.get('total') or 0.0)
+        # If OCR raw text available, delegate to advanced detector
+        if text:
+            try:
+                return self._advanced_vat_detection(data, text)
+            except Exception:
+                pass
+        # Heuristics by vendor keywords
+        food_words = ['restaurang', 'café', 'cafe', 'mat', 'lunch', 'fika', 'kök', 'bar', 'pub']
+        transport_words = ['taxi', 'uber', 'transport', 'tåg', 'buss', 'flyg', 'resa']
+        media_words = ['tidning', 'bok', 'musik', 'film', 'media', 'press']
+        fuel_words = ['shell', 'circle k', 'preem', 'okq8', 'statoil']
+        if any(w in vendor for w in food_words):
+            return 'SE12'
+        if any(w in vendor for w in transport_words) or 'taxi' in vendor:
+            return 'SE06'
+        if any(w in vendor for w in media_words):
+            return 'SE06'
+        if any(w in vendor for w in fuel_words):
+            return 'SE25'
+        # Amount micro-heuristic
+        if total and total < 50 and any(k in vendor for k in ['kaffe', 'fika', 'lunch']):
+            return 'SE12'
+        return 'SE25'
+
 
 async def process_with_invisible_bookkeeper(session: AsyncSession, org_id: int, body: dict) -> dict:
     """Main entry point for enhanced auto-posting."""
     bookkeeper = InvisibleBookkeeper(session, org_id)
     return await bookkeeper.enhanced_auto_post(body)
+
+    def _smart_vat_detection(self, data: dict) -> str:
+        """Best-effort VAT code detection when only basic fields are present.
+
+        Uses vendor name and optional raw_text if available. Falls back to SE25.
+        """
+        vendor = (data.get('vendor') or '').lower()
+        text = (data.get('raw_text') or '').lower()
+        total = float(data.get('total') or 0.0)
+        # If OCR raw text available, delegate to advanced detector
+        if text:
+            try:
+                return self._advanced_vat_detection(data, text)
+            except Exception:
+                pass
+        # Heuristics by vendor keywords
+        food_words = ['restaurang', 'café', 'cafe', 'mat', 'lunch', 'fika', 'kök', 'bar', 'pub']
+        transport_words = ['taxi', 'uber', 'transport', 'tåg', 'buss', 'flyg', 'resa']
+        media_words = ['tidning', 'bok', 'musik', 'film', 'media', 'press']
+        fuel_words = ['shell', 'circle k', 'preem', 'okq8', 'statoil']
+        if any(w in vendor for w in food_words):
+            return 'SE12'
+        if any(w in vendor for w in transport_words) or 'taxi' in vendor:
+            return 'SE06'
+        if any(w in vendor for w in media_words):
+            return 'SE06'
+        if any(w in vendor for w in fuel_words):
+            return 'SE25'
+        # Amount micro-heuristic
+        if total and total < 50 and any(k in vendor for k in ['kaffe', 'fika', 'lunch']):
+            return 'SE12'
+        return 'SE25'

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 
 from ..db import get_session
+from ..security import require_user
 from ..models import BankTransaction, Verification, Entry
 from ..matching import suggest_for_transaction
 from ..config import settings
@@ -44,7 +45,7 @@ def _parse_csv(text: str) -> list[dict[str, Any]]:
 
 
 @router.post("/import")
-async def import_file(file: UploadFile = File(...), session: AsyncSession = Depends(get_session)) -> dict:
+async def import_file(file: UploadFile = File(...), session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     name = (file.filename or "").lower()
     content = (await file.read())
     rows: list[dict[str, Any]]
@@ -76,6 +77,7 @@ async def list_transactions(
     limit: int = 50,
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ) -> dict:
     stmt = select(BankTransaction)
     conditions = []
@@ -120,7 +122,7 @@ async def list_transactions(
 
 
 @router.get("/transactions/{tx_id}/suggest")
-async def suggest(tx_id: int, session: AsyncSession = Depends(get_session)) -> dict:
+async def suggest(tx_id: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     tx = (await session.execute(select(BankTransaction).where(BankTransaction.id == tx_id))).scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="not found")
@@ -129,7 +131,7 @@ async def suggest(tx_id: int, session: AsyncSession = Depends(get_session)) -> d
 
 
 @router.post("/transactions/{tx_id}/accept")
-async def accept_match(tx_id: int, body: dict, session: AsyncSession = Depends(get_session)) -> dict:
+async def accept_match(tx_id: int, body: dict, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     ver_id = int(body.get("verification_id") or 0)
     if ver_id <= 0:
         raise HTTPException(status_code=400, detail="verification_id required")
@@ -142,7 +144,7 @@ async def accept_match(tx_id: int, body: dict, session: AsyncSession = Depends(g
 
 
 @router.post("/transactions/bulk-accept")
-async def bulk_accept(body: dict, session: AsyncSession = Depends(get_session)) -> dict:
+async def bulk_accept(body: dict, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     items = body.get("items") or []
     if not isinstance(items, list) or not items:
         raise HTTPException(status_code=400, detail="items required")
@@ -184,7 +186,7 @@ def _compute_open_amount(entries: list[Entry]) -> tuple[str | None, float]:
 
 
 @router.post("/transactions/{tx_id}/settle")
-async def settle_transaction(tx_id: int, body: dict, session: AsyncSession = Depends(get_session)) -> dict:
+async def settle_transaction(tx_id: int, body: dict, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     ver_id = int(body.get("verification_id") or 0)
     if ver_id <= 0:
         raise HTTPException(status_code=400, detail="verification_id required")

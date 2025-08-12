@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
+from ..security import require_user
 from ..config import settings
 from .ingest import upload_document
 from fastapi import UploadFile
@@ -30,7 +31,7 @@ def _iter_stub_emails() -> List[tuple[str, bytes]]:
 
 
 @router.post("/ingest")
-async def ingest_emails(session: AsyncSession = Depends(get_session)) -> dict:
+async def ingest_emails(session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     if not settings.email_ingest_enabled:
         raise HTTPException(status_code=501, detail="email ingest disabled")
     processed = 0
@@ -69,7 +70,7 @@ async def ingest_emails(session: AsyncSession = Depends(get_session)) -> dict:
 
 
 @router.post("/ingest/imap")
-async def ingest_emails_imap(session: AsyncSession = Depends(get_session)) -> dict:
+async def ingest_emails_imap(session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     if not settings.email_ingest_enabled:
         raise HTTPException(status_code=501, detail="email ingest disabled")
     if not settings.email_imap_host or not settings.email_imap_user or not settings.email_imap_password:

@@ -25,7 +25,7 @@ class _CapturePageState extends ConsumerState<CapturePage> {
   Future<void> _pickAndUpload() async {
     setState(() {
       _busy = true;
-      _message = 'Väljer fil…';
+      _message = 'Välj eller fota dokument…';
     });
     Uint8List? pickedBytes;
     String filename = 'image.jpg';
@@ -58,10 +58,10 @@ class _CapturePageState extends ConsumerState<CapturePage> {
       setState(() => _message = 'Laddar upp…');
       final uploaded = await api.uploadDocument(bytes: pickedBytes!, filename: filename, meta: {'source': kIsWeb ? 'web_upload' : 'camera'});
       AnalyticsService.logEvent('capture_upload_success');
-      setState(() => _message = 'Bearbetar OCR…');
+      setState(() => _message = 'Läser av dokument…');
       final ocr = await api.processOcr(uploaded.documentId);
       AnalyticsService.logEvent('ocr_extraction_success');
-      setState(() => _message = 'Skapar verifikation…');
+      setState(() => _message = 'Kategoriserar och bokför…');
       final fields = (ocr['fields'] as List).cast<Map<String, dynamic>>();
       double total = 0.0;
       String dateIso = DateTime.now().toIso8601String().substring(0, 10);
@@ -78,11 +78,11 @@ class _CapturePageState extends ConsumerState<CapturePage> {
           vendor = val;
         }
       }
-      await api.autoPostFromExtracted(documentId: uploaded.documentId, total: total, dateIso: dateIso, vendor: vendor);
+      await api.autoPostFromExtracted(documentId: uploaded.documentId, total: total, dateIso: dateIso, vendor: vendor, preferEnhanced: true);
       AnalyticsService.logEvent('autopost_success');
       // Insert to recent documents for immediate visibility
       ref.read(recentDocumentsProvider.notifier).add(
-            DocumentSummary(id: uploaded.documentId, uploadedAt: DateTime.now(), status: DocumentStatus.newDoc),
+            DocumentSummary(id: uploaded.documentId, uploadedAt: DateTime.now(), status: DocumentStatus.done),
           );
       ref.read(successBannerProvider.notifier).show('Bokfört ✅');
       if (mounted) {
@@ -90,7 +90,7 @@ class _CapturePageState extends ConsumerState<CapturePage> {
           _busy = false;
           _message = 'Bokfört ✅';
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Klart! Vi har bokfört detta.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Klart! Vi har bokfört automatiskt.')));
       }
     } catch (e) {
       // Offline fallback: queue job
@@ -125,12 +125,12 @@ class _CapturePageState extends ConsumerState<CapturePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ladda upp ett kvitto (webb) – kameraflöde kommer i mobil.'),
+            const Text('Ta en bild eller ladda upp. Vi läser av, kategoriserar och bokför automatiskt.'),
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: _busy ? null : _pickAndUpload,
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Välj bild'),
+              icon: const Icon(Icons.camera_alt_outlined),
+              label: const Text('Fota/Ladda upp'),
             ),
             const SizedBox(height: 12),
             if (_busy) const LinearProgressIndicator(),

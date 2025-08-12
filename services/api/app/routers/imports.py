@@ -4,6 +4,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
+from ..security import require_user
 from ..sie import parse_sie
 from ..routers.verifications import VerificationIn, EntryIn, create_verification
 
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 
 
 @router.post("/sie")
-async def import_sie(file: UploadFile = File(...), session: AsyncSession = Depends(get_session)) -> dict:
+async def import_sie(file: UploadFile = File(...), session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     if not file.filename.lower().endswith((".se", ".sie", ".txt")):
         raise HTTPException(status_code=400, detail="expected SIE-like file")
     text = (await file.read()).decode("cp437", errors="ignore")
@@ -38,6 +39,9 @@ async def import_sie(file: UploadFile = File(...), session: AsyncSession = Depen
         await create_verification(vin, session)
         created += 1
     return {"imported": created}
+
+
+
 
 
 

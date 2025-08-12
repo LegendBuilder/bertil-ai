@@ -2,11 +2,44 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Tuple
+from sqlalchemy import select
 
 from .vendor_embeddings import embed_vendor_name
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from .models import VendorEmbedding
+
+# Feedback-aware mapping: prefer explicit user feedback over embeddings/heuristics
+async def _lookup_feedback(session: AsyncSession, vendor: str | None) -> MappingDecision | None:
+    if not session or not vendor:
+        return None
+    try:
+        from .models_feedback import AiFeedback  # lazy import to avoid circular in tests without migration
+    except Exception:
+        return None
+    try:
+        stmt = select(AiFeedback).where(AiFeedback.vendor_ilike == vendor.lower()).order_by(AiFeedback.id.desc())
+        row = (await session.execute(stmt)).scalars().first()
+        if row and (row.correct_account or row.correct_vat_code or row.correct_vat_rate is not None):
+            account = row.correct_account or None
+            # VAT precedence: explicit code -> rate
+            if row.correct_vat_code:
+                # Map common codes to rate when building entries is not code-based
+                code = row.correct_vat_code.upper()
+                if code == "SE12":
+                    rate = 0.12
+                elif code == "SE06":
+                    rate = 0.06
+                else:
+                    rate = 0.25
+            else:
+                rate = float(row.correct_vat_rate) if row.correct_vat_rate is not None else 0.25
+            if account is None:
+                # keep default heuristic account if not set; indicate reason
+                return None
+            return MappingDecision(account, rate, "Användarfeedback prioriterad")
+    except Exception:
+        return None
+    return None
 
 @dataclass
 class MappingDecision:
@@ -41,6 +74,11 @@ async def _lookup_vendor_embedding(session: AsyncSession, vendor: str) -> Mappin
 
 async def suggest_account_and_vat(vendor: str | None, total_amount: float, session: AsyncSession | None = None) -> MappingDecision:
     v = (vendor or "").lower()
+    # 0) Use prior feedback first if available
+    if session is not None and vendor:
+        fb = await _lookup_feedback(session, vendor)
+        if fb:
+            return fb
     # Embedding-based suggestion when session provided and we have a dictionary
     if session is not None and vendor:
         hit = await _lookup_vendor_embedding(session, vendor)
@@ -65,7 +103,7 @@ def build_entries(total_amount: float, expense_account: str, vat_rate: float) ->
     vat = round(total_amount - net, 2)
     return [
         {"account": expense_account, "debit": net, "credit": 0.0},
-        {"account": "2641", "debit": vat, "credit": 0.0},  # Ingående moms
+        {"account": "2641", "debit": vat, "credit": 0.0},
         {"account": "1910", "debit": 0.0, "credit": round(total_amount, 2)},
     ]
 
@@ -83,8 +121,8 @@ def build_entries_with_code(total_amount: float, expense_account: str, vat_code:
         vat = round(base * rate, 2)
         return [
             {"account": expense_account, "debit": base, "credit": 0.0},
-            {"account": "2615", "debit": 0.0, "credit": vat},  # Utgående moms, omvänd
-            {"account": "2645", "debit": vat, "credit": 0.0},  # Ingående moms, omvänd
+            {"account": "2615", "debit": 0.0, "credit": vat},
+            {"account": "2645", "debit": vat, "credit": 0.0},
             {"account": "1910", "debit": 0.0, "credit": base},
         ]
     rate = 0.25

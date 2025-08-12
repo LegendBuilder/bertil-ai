@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response, Depends
 from ..config import settings
+from ..security import require_user
 import redis.asyncio as redis  # type: ignore
 from ..metrics_flow import get_stats
 from typing import Optional
@@ -15,7 +16,7 @@ async def metrics_health() -> dict:
 
 
 @router.get("/metrics/ocr")
-async def metrics_ocr() -> dict:
+async def metrics_ocr(user=Depends(require_user)) -> dict:
     depth = None
     if settings.ocr_queue_url:
         try:
@@ -28,7 +29,7 @@ async def metrics_ocr() -> dict:
 
 
 @router.get("/metrics/flow")
-async def metrics_flow() -> dict:
+async def metrics_flow(user=Depends(require_user)) -> dict:
     return get_stats()
 
 
@@ -37,7 +38,7 @@ _frontend_events: dict[str, int] = {}
 
 
 @router.post("/metrics/fail/{area}")
-async def record_failure(area: str) -> dict:
+async def record_failure(area: str, user=Depends(require_user)) -> dict:
     if area not in _fail_counters:
         _fail_counters[area] = 0
     _fail_counters[area] += 1
@@ -45,7 +46,7 @@ async def record_failure(area: str) -> dict:
 
 
 @router.get("/metrics/alerts")
-async def metrics_alerts() -> dict:
+async def metrics_alerts(user=Depends(require_user)) -> dict:
     alerts = []
     # OCR queue depth alert
     try:
@@ -65,7 +66,7 @@ async def metrics_alerts() -> dict:
 
 
 @router.post("/metrics/event")
-async def metrics_event(payload: dict) -> dict:
+async def metrics_event(payload: dict, user=Depends(require_user)) -> dict:
     """Accept lightweight frontend analytics events without PII.
 
     Payload: {"name": str, "params": dict, "platform": "web"|"mobile"}
@@ -79,7 +80,22 @@ async def metrics_event(payload: dict) -> dict:
 
 
 @router.get("/metrics/event/stats")
-async def metrics_event_stats() -> dict:
+async def metrics_event_stats(user=Depends(require_user)) -> dict:
     return {"events": _frontend_events}
+
+
+@router.get("/metrics")
+async def metrics_prometheus() -> Response:
+    """Expose Prometheus metrics in text format.
+
+    Falls back gracefully when prometheus_client is not installed.
+    """
+    try:  # Lazy import to avoid hard dependency during tests without extras
+        from prometheus_client import generate_latest, REGISTRY  # type: ignore
+        data = generate_latest(REGISTRY)
+        return Response(content=data, media_type="text/plain; version=0.0.4; charset=utf-8")
+    except Exception:
+        # Minimal fallback to ensure endpoint exists in environments without prometheus_client
+        return Response(content="# metrics unavailable", media_type="text/plain")
 
 

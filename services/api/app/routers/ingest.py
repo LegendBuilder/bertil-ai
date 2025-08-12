@@ -14,6 +14,7 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..db import get_session
+from ..security import require_user
 from ..config import settings
 from ..models import Document, ExtractedField
 
@@ -37,6 +38,7 @@ async def list_documents(
     limit: int = 20,
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ) -> dict:
     stmt = select(Document).order_by(Document.id.desc()).offset(offset).limit(limit)
     rows = (await session.execute(stmt)).scalars().all()
@@ -139,6 +141,7 @@ async def upload_document(
     file: UploadFile = File(...),
     meta_json: str = Form("{}"),
     session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
 ) -> dict:
     # Compute sha256 in a streaming fashion (no full buffering)
     await file.seek(0)
@@ -215,7 +218,7 @@ async def upload_document(
 
 
 @router.get("/{doc_id}")
-async def get_document(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> dict:
+async def get_document(doc_id: str, request: Request, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     # Build absolute URL so web clients don't depend on their own origin
     try:
         storage_url = request.url_for("get_document_image", doc_id=doc_id)
@@ -263,7 +266,7 @@ async def get_document(doc_id: str, request: Request, session: AsyncSession = De
 
 
 @router.get("/{doc_id}/image", name="get_document_image")
-async def get_document_image(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)):
+async def get_document_image(doc_id: str, request: Request, session: AsyncSession = Depends(get_session), user=Depends(require_user)):
     inm = request.headers.get("if-none-match")
     if inm and inm.strip() == f'W/"{doc_id}"':
         return Response(status_code=304)
@@ -313,7 +316,7 @@ async def get_document_image(doc_id: str, request: Request, session: AsyncSessio
 
 
 @router.get("/{doc_id}/thumbnail")
-async def get_document_thumbnail(doc_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> StreamingResponse:
+async def get_document_thumbnail(doc_id: str, request: Request, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> StreamingResponse:
     inm = request.headers.get("if-none-match")
     if inm and inm.strip() == f'W/"{doc_id}/thumb"':
         return Response(status_code=304)
@@ -365,7 +368,7 @@ async def get_document_thumbnail(doc_id: str, request: Request, session: AsyncSe
 
 
 @router.post("/{doc_id}/process-ocr")
-async def process_document_ocr(doc_id: str, session: AsyncSession = Depends(get_session)) -> dict:
+async def process_document_ocr(doc_id: str, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
     path = _find_document_path(doc_id)
     if path is None or not path.exists():
         raise HTTPException(status_code=404, detail="document not found")

@@ -42,7 +42,23 @@ class IngestApi {
     required String dateIso,
     String? vendor,
     String? vatCode,
+    bool preferEnhanced = true,
   }) async {
+    if (preferEnhanced) {
+      try {
+        final res = await _dio.post('/ai/enhanced/auto-post', data: {
+          'org_id': 1,
+          'document_id': documentId,
+          'total': total,
+          'date': dateIso,
+          if (vendor != null) 'vendor': vendor,
+          if (vatCode != null) 'vat_code': vatCode,
+        });
+        return res.data as Map<String, dynamic>;
+      } catch (_) {
+        // fallback to legacy
+      }
+    }
     final res = await _dio.post('/ai/auto-post', data: {
       'org_id': 1,
       'document_id': documentId,

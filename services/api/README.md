@@ -74,4 +74,57 @@ Auto-post will consult the dictionary before rule-based mapping.
 curl -X POST http://127.0.0.1:8000/admin/kb/rebuild
 ```
 
+- Knowledge base status (stubbed):
+
+```
+curl -s http://127.0.0.1:8000/admin/kb/status | jq
+```
+
+## OpenRouter / LLM cache (.env)
+
+Create `.env` in repo root to enable OpenRouter with a small Redis cache:
+
+```
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-...
+LLM_MODEL=meta-llama/llama-3.1-70b-instruct:free
+LLM_TEMPERATURE=0.1
+LLM_CACHE_URL=redis://localhost:6379/1
+LLM_CACHE_TTL_HOURS=24
+LLM_FALLBACK_ENABLED=true
+```
+
+Redis is optional; if not set, LLM calls work without caching.
+
+## Metrics
+
+- Prometheus metrics exposed at `/metrics` (text format). Example:
+
+```
+curl -s http://127.0.0.1:8000/metrics | head
+```
+
+LLM metrics include:
+
+- llm_requests_total{provider,model,operation}
+- llm_errors_total{provider,model,operation}
+- llm_latency_seconds_bucket{provider,model,operation,...}
+- llm_cost_usd{provider,model}
+
+## AI Feedback
+
+Capture user corrections to improve suggestions (feedback takes precedence over embeddings):
+
+```
+curl -X POST http://127.0.0.1:8000/review/ai/feedback \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor": "Kaffe AB",
+    "correct_account": "5811",
+    "correct_vat_code": "SE12",
+    "org_id": 1
+  }'
+```
+
+
 

@@ -153,13 +153,34 @@ class LLMService:
     
     async def optimize_tax(self, verification_data: Dict[str, Any]) -> Dict[str, Any]:
         """Swedish tax optimization using LLM with Skatteverket rules."""
-        
+        from ..metrics_llm import record_request, record_error, observe_latency
+        provider_label = self.config.provider.value
+        model_label = getattr(self.client, "models", {}).get("accounting") if self.config.provider == LLMProvider.OPENROUTER else self.config.model
+        record_request(provider_label, model_label or "unknown", "tax")
+        start = time.perf_counter()
+
+        # Thread RAG snippets (context) into prompt
+        try:
+            from .swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
+            kb = get_knowledge_base()
+            rag = SwedishTaxRAG(kb)
+            # Basic query based on transaction fields
+            q = "skatteoptimering moms representation resa FoU"
+            rag_hits = rag.search(q, k=3)
+            citations_text = "\n".join([f"- {h['title']}: {h['url']} — {h['snippet']}" for h in rag_hits])
+        except Exception:
+            rag_hits = []
+            citations_text = ""
+
         prompt = f"""
         Analyze this Swedish business transaction for tax optimization opportunities.
         
         Transaction:
         {verification_data}
         
+        Context (cited sources):
+        {citations_text}
+
         Apply Swedish tax rules:
         1. Representation (Bokföringslagen 4 kap 2§): 50% deductible
         2. Travel (Inkomstskattelagen 16 kap): Full deductible, 6% VAT
@@ -170,21 +191,50 @@ class LLMService:
         Return optimization suggestions with exact SEK savings.
         Consider timing (year-end), account classification, and VAT optimization.
         
-        Format response as JSON with specific actions and savings.
+        Format response as JSON with specific actions and savings, and include a 'citations' array listing any URLs used.
         """
-        
-        response = await self._get_completion(prompt)
-        return self._parse_json_response(response)
+        try:
+            response = await self._get_completion(prompt)
+            out = self._parse_json_response(response)
+            if rag_hits and isinstance(out, dict) and "citations" not in out:
+                out["citations"] = rag_hits
+            return out
+        except Exception:
+            record_error(provider_label, model_label or "unknown", "tax")
+            raise
+        finally:
+            observe_latency(provider_label, model_label or "unknown", "tax", time.perf_counter() - start)
     
     async def check_compliance(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """Swedish compliance checking using LLM."""
-        
+        from ..metrics_llm import record_request, record_error, observe_latency
+        provider_label = self.config.provider.value
+        model_label = getattr(self.client, "models", {}).get("swedish") if self.config.provider == LLMProvider.OPENROUTER else self.config.model
+        record_request(provider_label, model_label or "unknown", "compliance")
+        start = time.perf_counter()
+
+        # RAG context
+        try:
+            from .swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
+            kb = get_knowledge_base()
+            rag = SwedishTaxRAG(kb)
+            # Construct a query using keywords in transaction
+            base_q = "moms bokföringslagen BFN GDPR omvänd skattskyldighet"
+            rag_hits = rag.search(base_q, k=3)
+            citations_text = "\n".join([f"- {h['title']}: {h['url']} — {h['snippet']}" for h in rag_hits])
+        except Exception:
+            rag_hits = []
+            citations_text = ""
+
         prompt = f"""
         Check this transaction against Swedish accounting law (Bokföringslagen) and tax regulations.
         
         Transaction:
         {transaction}
         
+        Context (cited sources):
+        {citations_text}
+
         Validate against:
         1. Bokföringslagen requirements (complete documentation, timeliness)
         2. Skatteverket VAT rules (correct rates, reverse charge)
@@ -197,22 +247,50 @@ class LLMService:
         - issues (critical problems)
         - warnings (potential problems)
         - recommendations (how to fix)
+        - citations (list of URLs)
         
         Be strict - it's better to flag potential issues than miss real problems.
         """
-        
-        response = await self._get_completion(prompt)
-        return self._parse_json_response(response)
+        try:
+            response = await self._get_completion(prompt)
+            out = self._parse_json_response(response)
+            if rag_hits and isinstance(out, dict) and "citations" not in out:
+                out["citations"] = rag_hits
+            return out
+        except Exception:
+            record_error(provider_label, model_label or "unknown", "compliance")
+            raise
+        finally:
+            observe_latency(provider_label, model_label or "unknown", "compliance", time.perf_counter() - start)
     
     async def generate_insights(self, business_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate contextual business insights using LLM."""
-        
+        from ..metrics_llm import record_request, record_error, observe_latency
+        provider_label = self.config.provider.value
+        model_label = getattr(self.client, "models", {}).get("swedish") if self.config.provider == LLMProvider.OPENROUTER else self.config.model
+        record_request(provider_label, model_label or "unknown", "insights")
+        start = time.perf_counter()
+
+        # RAG context
+        try:
+            from .swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
+            kb = get_knowledge_base()
+            rag = SwedishTaxRAG(kb)
+            rag_hits = rag.search("moms satser representation resor skatteplanering", k=3)
+            citations_text = "\n".join([f"- {h['title']}: {h['url']} — {h['snippet']}" for h in rag_hits])
+        except Exception:
+            rag_hits = []
+            citations_text = ""
+
         prompt = f"""
         Analyze this Swedish business data and provide actionable insights.
         
         Business Data:
         {business_data}
         
+        Context (cited sources):
+        {citations_text}
+
         Generate insights for:
         1. Expense trends and anomalies
         2. Cash flow risks and opportunities
@@ -226,12 +304,21 @@ class LLMService:
         - impact (SEK value if applicable)
         - urgency (immediate/daily/weekly/monthly)
         - action (what to do)
+        - citations (URLs for grounding)
         
         Focus on Swedish business context and regulations.
         """
-        
-        response = await self._get_completion(prompt)
-        return self._parse_json_response(response)
+        try:
+            response = await self._get_completion(prompt)
+            out = self._parse_json_response(response)
+            if rag_hits and isinstance(out, dict) and "citations" not in out:
+                out["citations"] = rag_hits
+            return out
+        except Exception:
+            record_error(provider_label, model_label or "unknown", "insights")
+            raise
+        finally:
+            observe_latency(provider_label, model_label or "unknown", "insights", time.perf_counter() - start)
     
     async def _get_completion(self, prompt: str) -> str:
         """Route to appropriate provider."""
