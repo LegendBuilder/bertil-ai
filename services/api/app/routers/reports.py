@@ -101,6 +101,15 @@ async def vat_report(
         "currency": "SEK",
         "by_code": code_breakdown,
     }
+    # Flag potential edge cases for Swedish VAT
+    flags: list[str] = []
+    if outgoing == 0.0 and incoming == 0.0:
+        flags.append("no_vat_activity")
+    if outgoing > 0.0 and incoming > outgoing:
+        flags.append("incoming_exceeds_outgoing")
+    if any(k.upper().startswith("RC") for k in code_breakdown.keys()) and (outgoing > 0.0):
+        flags.append("rc_with_outgoing_present")
+    payload["flags"] = flags
     if format.lower() == "pdf":
         from io import BytesIO
         from reportlab.lib.pagesizes import A4
