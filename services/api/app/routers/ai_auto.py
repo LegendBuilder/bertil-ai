@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_session
 from ..security import require_user, require_org, enforce_rate_limit
 from ..ai import suggest_account_and_vat, build_entries, build_entries_with_code
+from ..metrics_kpis import record_attempt, record_success, record_compliance_block
 from ..routers.verifications import VerificationIn, EntryIn, create_verification  # reuse model & logic
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -33,6 +34,7 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
         require_org(user, int(org_id))
     except Exception:
         pass
+    record_attempt(org_id, "legacy")
     decision = await suggest_account_and_vat(vendor, total, session)
     vat_code = body.get("vat_code")
     if vat_code:
@@ -52,6 +54,10 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
     )
     # Delegate to existing create_verification route
     created = await create_verification(vin, session)
+    try:
+        record_success(org_id, "legacy")
+    except Exception:
+        pass
     explain = f"{decision.reason}. Total {total:.2f} SEK, konto {decision.expense_account}, moms {int(decision.vat_rate*100)}%"
     # Persist explainability in a local sidecar to allow retrieval later
     try:

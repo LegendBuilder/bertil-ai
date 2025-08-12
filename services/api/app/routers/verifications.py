@@ -14,6 +14,7 @@ from ..config import settings
 from ..security import require_user, require_org, enforce_rate_limit
 from ..audit import append_audit_event
 from ..compliance import run_verification_rules, persist_flags
+from ..metrics_kpis import record_compliance_block
 from ..models import Entry, Verification, AuditLog, PeriodLock
 from ..models import Base
 
@@ -142,6 +143,10 @@ async def create_verification(
         # Roll back the uncommitted verification and entries
         await session.rollback()
         details = [{"rule": f.rule_code, "message": f.message} for f in error_flags]
+        try:
+            record_compliance_block(int(v.org_id), "post")
+        except Exception:
+            pass
         raise HTTPException(status_code=422, detail={"errors": details})
 
     await session.commit()

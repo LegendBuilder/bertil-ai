@@ -13,6 +13,7 @@ from ..agents.compliance_guardian import check_pre_verification_compliance, dail
 from ..agents.business_intelligence import get_contextual_business_insights
 from ..agents.llm_integration import get_llm_service
 from ..agents.swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
+from ..metrics_kpis import record_attempt, record_success, record_compliance_block
 
 router = APIRouter(prefix="/ai/enhanced", tags=["ai-enhanced"])
 
@@ -34,11 +35,17 @@ async def enhanced_auto_post(
     """
     try:
         org_id = int(body.get("org_id", 1))
+        record_attempt(org_id, "enhanced")
         try:
             require_org(user, org_id)
         except Exception:
             pass
-        return await process_with_invisible_bookkeeper(session, org_id, body)
+        result = await process_with_invisible_bookkeeper(session, org_id, body)
+        try:
+            record_success(org_id, "enhanced")
+        except Exception:
+            pass
+        return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Enhanced processing failed: {e}")
 
@@ -61,7 +68,13 @@ async def pre_verification_compliance_check(
             require_org(user, org_id)
         except Exception:
             pass
-        return await check_pre_verification_compliance(session, org_id, body)
+        out = await check_pre_verification_compliance(session, org_id, body)
+        if not out.get("can_proceed", True):
+            try:
+                record_compliance_block(org_id, "pre")
+            except Exception:
+                pass
+        return out
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Compliance check failed: {e}")
 
