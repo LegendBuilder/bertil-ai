@@ -1,3 +1,30 @@
+# Environments / virtualenvs
+.venv/
+.venv*/
+.venv311/
+**/.venv/**
+
+# Flutter / builds
+build/
+**/build/**
+flutter.zip
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local databases / artifacts
+*.db
+test_output.txt
+.worm_store/
+.email_ingest_inbox/
+
 # Python
 __pycache__/
 *.py[cod]
