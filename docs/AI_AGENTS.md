@@ -70,6 +70,7 @@ When fully implemented, Bertil-AI will feature four production-ready AI agents t
 - **Swedish Business Logic**: Automatic VAT code detection (SE25/SE12/SE06/RC25)
 - **Quality Assurance**: Text quality assessment and validation scoring  
 - **Intelligent Fallback**: Automatic fallback to manual review for edge cases
+- **Learning Loop**: Prioritizes explicit user feedback over embeddings/heuristics (vendor→konto/moms)
 
 #### Technical Implementation
 
@@ -109,7 +110,7 @@ When fully implemented, Bertil-AI will feature four production-ready AI agents t
 4. **Business Logic**: Swedish VAT rules application
 5. **Compliance Pre-check**: Integration with Compliance Guardian
 6. **Confidence Scoring**: Overall automation confidence (0.0-1.0)
-7. **Decision**: Auto-approve (≥85%) or Manual Review (<85%)
+7. **Decision**: Auto-approve (≥85%) or Manual Review (<85%); records KPIs
 
 ### 2. Proactive Tax Optimizer
 
