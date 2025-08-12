@@ -148,6 +148,7 @@ class BankTransaction(Base):
     __tablename__ = "bank_transactions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(Integer, index=True, default=1)
     import_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     date: Mapped[datetime] = mapped_column(Date)
     amount: Mapped[float] = mapped_column(Numeric(14, 2))

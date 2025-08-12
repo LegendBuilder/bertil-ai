@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends, R
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel
 from io import BytesIO
-from PIL import Image
+# Pillow is imported lazily within image handling to reduce import overhead and avoid environment issues
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..db import get_session
@@ -142,6 +142,11 @@ import secrets
 import asyncio
 import time
 from ..metrics_flow import record_duration
+import mimetypes
+try:
+    import magic  # type: ignore
+except Exception:  # pragma: no cover
+    magic = None  # type: ignore
 
 
 @router.post("")
@@ -152,8 +157,11 @@ async def upload_document(
     user=Depends(require_user),
     _rl: None = Depends(enforce_rate_limit),
 ) -> dict:
-    # Upload hardening: basic MIME/size checks
-    if file.content_type not in (settings.upload_allowed_mime.split(",")):
+    # Upload hardening: MIME/size checks and magic sniffing; optional PDF
+    allowed_mimes = set(settings.upload_allowed_mime.split(","))
+    if settings.upload_allow_pdf:
+        allowed_mimes.add("application/pdf")
+    if file.content_type not in allowed_mimes:
         raise HTTPException(status_code=400, detail="unsupported content type")
     # Read entire file (typical receipts are small); enforce size
     await file.seek(0)
@@ -161,11 +169,26 @@ async def upload_document(
     if len(raw_bytes) > settings.upload_max_bytes:
         raise HTTPException(status_code=400, detail="file too large")
 
-    # Optional: EXIF strip / re-encode image defensively
+    # Optional: EXIF strip / re-encode image defensively; PDF sanitize if enabled
     content_bytes = raw_bytes
+    # Magic sniffing to validate content matches declared type
+    try:
+        sniff_mime = None
+        if magic is not None:
+            sniff_mime = magic.from_buffer(raw_bytes, mime=True)  # type: ignore[attr-defined]
+        if sniff_mime:
+            normalized = sniff_mime.replace("pjpeg", "jpeg").replace("x-png", "png")
+            if normalized not in allowed_mimes:
+                raise HTTPException(status_code=400, detail="file content type not allowed")
+    except HTTPException:
+        raise
+    except Exception:
+        # If magic unavailable or fails, continue
+        pass
     try:
         if file.content_type in ("image/jpeg", "image/png"):
-            with Image.open(BytesIO(raw_bytes)) as img_in:
+            from PIL import Image as _Img
+            with _Img.open(BytesIO(raw_bytes)) as img_in:
                 # Image bomb guard: reject absurdly large pixel counts (> 100 MP)
                 if (img_in.width or 0) * (img_in.height or 0) > 100_000_000:
                     raise HTTPException(status_code=400, detail="image too large (pixels)")
@@ -176,6 +199,29 @@ async def upload_document(
                 img.save(buf, format=fmt, **save_args)
                 buf.seek(0)
                 content_bytes = buf.read()
+        elif file.content_type == "application/pdf" and settings.pdf_sanitize_enabled:
+            try:
+                import subprocess, tempfile, os as _os
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as _in:
+                    _in.write(raw_bytes)
+                    _in.flush()
+                    in_path = _in.name
+                out_fd, out_path = tempfile.mkstemp(suffix=".pdf")
+                _os.close(out_fd)
+                # qpdf sanitize: remove javascript, linearize, normalize (best-effort)
+                subprocess.run(["qpdf", "--no-warn", "--linearize", "--decrypt", "--no-object-streams", in_path, out_path], check=False)
+                try:
+                    content_bytes = Path(out_path).read_bytes()
+                except Exception:
+                    content_bytes = raw_bytes
+                finally:
+                    try:
+                        Path(in_path).unlink(missing_ok=True)  # type: ignore[arg-type]
+                        Path(out_path).unlink(missing_ok=True)  # type: ignore[arg-type]
+                    except Exception:
+                        pass
+            except Exception:
+                content_bytes = raw_bytes
     except HTTPException:
         raise
     except Exception:

@@ -1,0 +1,29 @@
+{
+  "title": "Automation & Compliance KPIs",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Automation Rate",
+      "targets": [
+        { "expr": "automation_rate" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Attempts vs Success",
+      "targets": [
+        { "expr": "sum by (org_id,level)(automation_attempts_total)" },
+        { "expr": "sum by (org_id,level)(automation_success_total)" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Compliance Blocks",
+      "targets": [
+        { "expr": "sum by (org_id,phase)(compliance_blocked_total)" }
+      ]
+    }
+  ]
+}
+
+

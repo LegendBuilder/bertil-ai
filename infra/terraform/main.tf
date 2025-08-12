@@ -17,11 +17,18 @@ resource "aws_s3_bucket_versioning" "archive" {
   }
 }
 
+resource "aws_kms_key" "s3_archive" {
+  description             = "KMS key for S3 archive object encryption"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "archive" {
   bucket = aws_s3_bucket.archive.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_archive.arn
     }
   }
 }
@@ -43,6 +50,41 @@ resource "aws_s3_bucket_object_lock_configuration" "archive" {
       days = var.object_lock_retention_years * 365
     }
   }
+}
+
+data "aws_iam_policy_document" "archive_bucket_policy" {
+  statement {
+    sid    = "DenyDelete"
+    effect = "Deny"
+    principals { type = "*" identifiers = ["*"] }
+    actions = [
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:DeleteObjectTagging",
+      "s3:DeleteObjectVersionTagging",
+    ]
+    resources = [
+      "${aws_s3_bucket.archive.arn}/*"
+    ]
+  }
+
+  statement {
+    sid    = "RequireObjectLockOnPut"
+    effect = "Deny"
+    principals { type = "*" identifiers = ["*"] }
+    actions = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.archive.arn}/*"]
+    condition {
+      test     = "StringNotEqualsIfExists"
+      variable = "s3:object-lock-mode"
+      values   = ["COMPLIANCE"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "archive" {
+  bucket = aws_s3_bucket.archive.id
+  policy = data.aws_iam_policy_document.archive_bucket_policy.json
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "archive" {
@@ -72,12 +114,56 @@ resource "aws_db_instance" "postgres" {
   skip_final_snapshot = true
   publicly_accessible = false
   deletion_protection = false
+  multi_az            = true
+  storage_encrypted   = true
+  kms_key_id          = aws_kms_key.s3_archive.arn
 
   tags = {
     Name        = "bertil-db-${var.environment}"
     Environment = var.environment
   }
 }
+
+# Application Load Balancer and WAF skeleton (details omitted for brevity)
+resource "aws_lb" "app" {
+  name               = "bertil-alb-${var.environment}"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = []
+  subnets            = []
+}
+
+resource "aws_wafv2_web_acl" "app" {
+  name        = "bertil-waf-${var.environment}"
+  description = "Basic WAF for rate limiting and common protections"
+  scope       = "REGIONAL"
+  default_action { allow {} }
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "bertil-waf"
+    sampled_requests_enabled   = true
+  }
+  rule {
+    name     = "aws-managed-common"
+    priority = 1
+    override_action { none {} }
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "common"
+      sampled_requests_enabled   = true
+    }
+  }
+}
+
+# Redis (Elasticache) placeholder for distributed rate limiting / cache
+# In production use aws_elasticache_cluster/replication_group
+
 
 resource "aws_opensearch_domain" "docs" {
   domain_name    = var.opensearch_domain_name

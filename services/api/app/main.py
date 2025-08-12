@@ -166,6 +166,13 @@ def create_app() -> FastAPI:
                         cols = {row[1] for row in res.fetchall()}  # type: ignore[index]
                         if "vat_code" not in cols:
                             await conn.execute(_text("ALTER TABLE verifications ADD COLUMN vat_code VARCHAR(20)"))
+                        # Ensure org_id exists on bank_transactions for local/test sqlite runs
+                        res2 = await conn.execute(_text("PRAGMA table_info('bank_transactions')"))
+                        cols2 = {row[1] for row in res2.fetchall()}  # type: ignore[index]
+                        if "org_id" not in cols2:
+                            await conn.execute(_text("ALTER TABLE bank_transactions ADD COLUMN org_id INTEGER"))
+                            # Backfill to 1 for existing rows
+                            await conn.execute(_text("UPDATE bank_transactions SET org_id = 1 WHERE org_id IS NULL"))
                     except Exception:
                         pass
             except Exception:

@@ -38,4 +38,16 @@ variable "db_instance_class" {
   default = "db.t4g.micro"
 }
 
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID for ALB"
+  default     = ""
+}
+
+variable "public_subnet_ids" {
+  type        = list(string)
+  description = "Public subnet IDs for ALB"
+  default     = []
+}
+
 

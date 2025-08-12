@@ -34,6 +34,9 @@ class LLMService:
         self._init_client()
         self._cache = None
         self._init_cache()
+        self._daily_budget_cents = None
+        self._daily_spent_cents = 0
+        self._budget_reset_epoch = int(time.time())
 
     def _init_cache(self) -> None:
         try:
@@ -121,6 +124,8 @@ class LLMService:
         model_label = getattr(self.client, "models", {}).get("swedish") if self.config.provider == LLMProvider.OPENROUTER else self.config.model
         record_request(provider_label, model_label or "unknown", "extract")
         start = time.perf_counter()
+        # Budget guard
+        self._check_and_enforce_budget()
         if self.config.provider == LLMProvider.OPENAI:
             response = await self._openai_complete(prompt)
             return self._parse_json_response(response)
@@ -144,11 +149,13 @@ class LLMService:
             except Exception:
                 pass
             observe_latency(provider_label, model_label or "unknown", "extract", time.perf_counter() - start)
+            self._add_estimated_cost()
             return data
         else:
             response = await self._local_complete(prompt)
             out = self._parse_json_response(response)
             observe_latency(provider_label, model_label or "unknown", "extract", time.perf_counter() - start)
+            self._add_estimated_cost()
             return out
     
     async def optimize_tax(self, verification_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -193,6 +200,8 @@ class LLMService:
         
         Format response as JSON with specific actions and savings, and include a 'citations' array listing any URLs used.
         """
+        # Budget guard
+        self._check_and_enforce_budget()
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
@@ -204,6 +213,7 @@ class LLMService:
             raise
         finally:
             observe_latency(provider_label, model_label or "unknown", "tax", time.perf_counter() - start)
+            self._add_estimated_cost()
     
     async def check_compliance(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """Swedish compliance checking using LLM."""
@@ -251,6 +261,8 @@ class LLMService:
         
         Be strict - it's better to flag potential issues than miss real problems.
         """
+        # Budget guard
+        self._check_and_enforce_budget()
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
@@ -262,6 +274,7 @@ class LLMService:
             raise
         finally:
             observe_latency(provider_label, model_label or "unknown", "compliance", time.perf_counter() - start)
+            self._add_estimated_cost()
     
     async def generate_insights(self, business_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate contextual business insights using LLM."""
@@ -308,6 +321,8 @@ class LLMService:
         
         Focus on Swedish business context and regulations.
         """
+        # Budget guard
+        self._check_and_enforce_budget()
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
@@ -319,6 +334,7 @@ class LLMService:
             raise
         finally:
             observe_latency(provider_label, model_label or "unknown", "insights", time.perf_counter() - start)
+            self._add_estimated_cost()
     
     async def _get_completion(self, prompt: str) -> str:
         """Route to appropriate provider."""
@@ -394,6 +410,38 @@ class LLMService:
         
         # Fallback to parsing key-value pairs
         return {"raw_response": response, "parse_error": True}
+
+    # --- Budget controls ---
+    def _reset_budget_if_needed(self) -> None:
+        # Reset daily at local midnight based on epoch day
+        now = int(time.time())
+        if self._budget_reset_epoch // 86400 != now // 86400:
+            self._budget_reset_epoch = now
+            self._daily_spent_cents = 0
+
+    def _check_and_enforce_budget(self) -> None:
+        try:
+            from ..config import settings
+            self._reset_budget_if_needed()
+            if self._daily_budget_cents is None:
+                self._daily_budget_cents = int(float(getattr(settings, "llm_budget_daily_usd", 1.0)) * 100)
+            if getattr(settings, "llm_budget_enforce", False):
+                if self._daily_spent_cents >= self._daily_budget_cents:
+                    raise RuntimeError("LLM daily budget exceeded")
+        except Exception:
+            # If config missing, do not block
+            pass
+
+    def _add_estimated_cost(self) -> None:
+        try:
+            from ..config import settings
+            est = float(getattr(settings, "llm_cost_per_request_estimate_usd", 0.002))
+            self._daily_spent_cents += int(est * 100)
+            # Update metrics gauge approximately
+            from ..metrics_llm import add_cost
+            add_cost(self.config.provider.value, getattr(self, "model", self.config.model), est)
+        except Exception:
+            pass
 
 
 # Singleton instance

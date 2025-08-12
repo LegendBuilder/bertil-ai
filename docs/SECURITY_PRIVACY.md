@@ -14,7 +14,7 @@
 ## WORM / Arkivering
 
 - S3 Object Lock (COMPLIANCE), retention ≥ 7 år, legal hold vid behov.
-- Versionering på, public access block på, SSE-S3.
+- Versionering på, public access block på, SSE-KMS (rotation påslagen).
 - Lifecycle: avbryt multipart efter 7 dagar.
 
 ## Regionpolicy

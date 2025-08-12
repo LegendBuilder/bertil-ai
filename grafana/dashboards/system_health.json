@@ -1,0 +1,22 @@
+{
+  "title": "System Health",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Synthetic Health",
+      "targets": [
+        { "expr": "up" }
+      ],
+      "description": "Use /metrics/synthetic as a panel via JSON datasource if needed."
+    },
+    {
+      "type": "graph",
+      "title": "Rate Limit Blocks",
+      "targets": [
+        { "expr": "sum(rate(rate_limit_exceeded_total[5m]))" }
+      ]
+    }
+  ]
+}
+
+

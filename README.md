@@ -64,7 +64,7 @@ Struktur
     - `GET /metrics/alerts` – rate‑limit‑block, OCR‑kövarningar m.m.
 - services/ocr – OCR-adaptrar (Tesseract, Google Vision, AWS Textract)
 - services/ai – AI/regelmotor (ersatt av agents)
-- infra/terraform – Terraform-stubbar (S3 Object Lock, RDS, OpenSearch, Secrets)
+- infra/terraform – Terraform (S3 Object Lock + KMS, RDS Multi‑AZ, OpenSearch, WAF/ALB, Secrets)
 - docs – Dokumentation (krav, arkitektur, säkerhet, tester, roadmap)
 
 Snabbstart (lokalt, Windows PowerShell)
@@ -128,7 +128,8 @@ Miljövariabler
   - `GOOGLE_APPLICATION_CREDENTIALS` (Vision)
   - `OTLP_ENDPOINT` (valfri)
   - Rate limiting: `RATE_LIMIT_REDIS_URL`, `RATE_LIMIT_PER_MINUTE` (fallback till in‑process)
-  - Upload hardening: `UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME`
+  - Upload hardening: `UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME`, `UPLOAD_ALLOW_PDF`, `PDF_SANITIZE_ENABLED`, `VIRUS_SCAN_ENABLED`
+  - LLM budget: `LLM_BUDGET_DAILY_USD`, `LLM_BUDGET_ENFORCE`, `LLM_COST_PER_REQUEST_ESTIMATE_USD`
   - WORM/S3: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`
 Se `.env.example` för exempelvärden. Använd separata `.env` per tjänst/miljö.
 

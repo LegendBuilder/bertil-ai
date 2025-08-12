@@ -1,0 +1,14 @@
+{
+  "title": "Flow Latency (Photo→Post)",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "p95 Flow Latency",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(flow_photo_to_post_seconds_bucket[5m])) by (le))" }
+      ]
+    }
+  ]
+}
+
+

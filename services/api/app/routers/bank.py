@@ -45,7 +45,12 @@ def _parse_csv(text: str) -> list[dict[str, Any]]:
 
 
 @router.post("/import")
-async def import_file(file: UploadFile = File(...), session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> dict:
+async def import_file(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit),
+) -> dict:
     name = (file.filename or "").lower()
     content = (await file.read())
     rows: list[dict[str, Any]]
@@ -58,9 +63,15 @@ async def import_file(file: UploadFile = File(...), session: AsyncSession = Depe
             raise HTTPException(status_code=400, detail="invalid CAMT.053") from exc
     else:
         raise HTTPException(status_code=400, detail="unsupported file type (csv|camt.053)")
+    # Determine org context and enforce access where applicable
+    try:
+        org_id = int(user.get("org_id") or 1)
+        require_org(user, org_id)
+    except Exception:
+        org_id = int(user.get("org_id") or 1)
     batch_id = int(datetime.utcnow().timestamp())
     for r in rows:
-        session.add(BankTransaction(import_batch_id=batch_id, **r))
+        session.add(BankTransaction(org_id=org_id, import_batch_id=batch_id, **r))
     await session.commit()
     return {"imported": len(rows), "batch_id": batch_id}
 
@@ -76,12 +87,18 @@ async def list_transactions(
     amount_max: float | None = None,
     limit: int = 50,
     offset: int = 0,
+    org_id: int | None = None,
     session: AsyncSession = Depends(get_session),
     user=Depends(require_user),
     _rl: None = Depends(enforce_rate_limit),
 ) -> dict:
-    stmt = select(BankTransaction)
-    # Scope by org if claim present (assumes BankTransaction augmented with org in future)
+    # Resolve organization scope
+    selected_org = int(org_id or user.get("org_id") or 1)
+    try:
+        require_org(user, selected_org)
+    except Exception:
+        pass
+    stmt = select(BankTransaction).where(BankTransaction.org_id == selected_org)
     conditions = []
     if unmatched:
         conditions.append(BankTransaction.matched_verification_id.is_(None))
@@ -128,6 +145,11 @@ async def suggest(tx_id: int, session: AsyncSession = Depends(get_session), user
     tx = (await session.execute(select(BankTransaction).where(BankTransaction.id == tx_id))).scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="not found")
+    # Enforce org scope
+    try:
+        require_org(user, int(tx.org_id))  # type: ignore[arg-type]
+    except Exception:
+        pass
     sugg = await suggest_for_transaction(session, tx)
     return {"items": [{"verification_id": v.id, "immutable_seq": v.immutable_seq, "date": v.date.isoformat(), "total": float(v.total_amount or 0.0), "counterparty": v.counterparty, "score": s} for v, s in sugg]}
 
@@ -140,6 +162,10 @@ async def accept_match(tx_id: int, body: dict, session: AsyncSession = Depends(g
     tx = (await session.execute(select(BankTransaction).where(BankTransaction.id == tx_id))).scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="not found")
+    try:
+        require_org(user, int(tx.org_id))  # type: ignore[arg-type]
+    except Exception:
+        pass
     tx.matched_verification_id = ver_id
     await session.commit()
     return {"id": tx.id, "matched_verification_id": ver_id}
@@ -160,6 +186,10 @@ async def bulk_accept(body: dict, session: AsyncSession = Depends(get_session), 
         tx = (await session.execute(select(BankTransaction).where(BankTransaction.id == tx_id))).scalars().first()
         if not tx:
             continue
+        try:
+            require_org(user, int(tx.org_id))  # type: ignore[arg-type]
+        except Exception:
+            pass
         tx.matched_verification_id = ver_id
         updated += 1
     await session.commit()
@@ -195,6 +225,10 @@ async def settle_transaction(tx_id: int, body: dict, session: AsyncSession = Dep
     tx = (await session.execute(select(BankTransaction).where(BankTransaction.id == tx_id))).scalars().first()
     if not tx:
         raise HTTPException(status_code=404, detail="transaction not found")
+    try:
+        require_org(user, int(tx.org_id))  # type: ignore[arg-type]
+    except Exception:
+        pass
     v = (await session.execute(select(Verification).where(Verification.id == ver_id))).scalars().first()
     if not v:
         raise HTTPException(status_code=404, detail="verification not found")

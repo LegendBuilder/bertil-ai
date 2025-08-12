@@ -23,5 +23,16 @@ async def bankid_status(orderRef: str) -> dict:
     return {"status": status}
 
 
+@router.get("/deeplink")
+async def bankid_deeplink(orderRef: str, autostart: int = 1) -> dict:
+    """Return a BankID app deep link (stub) for mobile redirect flows.
+
+    In production, format: bankid:///?autostarttoken=<token>&redirect=<urlencoded>
+    """
+    # For stub, simulate a deep link
+    link = f"bankid:///?autostarttoken={orderRef}&redirect=https%3A%2F%2Fapp.bertil-ai.se%2Fauth%2Fcb"
+    return {"deeplink": link, "autostart": bool(autostart)}
+
+
 
 

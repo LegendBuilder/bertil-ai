@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     llm_extraction_threshold: float = 0.6
     llm_cache_url: str | None = None  # e.g., redis://localhost:6379/1
     llm_cache_ttl_hours: int = 24
+    llm_budget_daily_usd: float = 1.0
+    llm_budget_enforce: bool = False
+    llm_cost_per_request_estimate_usd: float = 0.002
 
     # Logging
     log_requests: bool = False
@@ -51,6 +54,8 @@ class Settings(BaseSettings):
     # Upload hardening
     upload_max_bytes: int = 15_000_000  # 15 MB default
     upload_allowed_mime: str = "image/jpeg,image/png"
+    upload_allow_pdf: bool = False
+    pdf_sanitize_enabled: bool = False
 
     # Rate limiting (naive, in-process)
     rate_limit_enabled: bool = True
@@ -71,6 +76,13 @@ class Settings(BaseSettings):
     fortnox_client_id: str | None = None
     fortnox_client_secret: str | None = None
     fortnox_redirect_uri: str | None = None
+    
+    # BankID / broker placeholders (keys will be set via env/secrets in non-local)
+    bankid_broker: str | None = None
+    bankid_client_id: str | None = None
+    bankid_client_secret: str | None = None
+    bankid_redirect_uri: str | None = None
+    bankid_environment: str = "test"
 
     # Email ingest (IMAP)
     email_ingest_enabled: bool = False

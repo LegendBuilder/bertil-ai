@@ -15,14 +15,15 @@
   - Web uses queue stub; mobile uses Isar queue.
   - API base configured via `API_BASE_URL`.
 - Infra/DevOps
-  - Dockerfiles include Tesseract; non‑root user. Terraform stubs exist. CI basic.
+  - Dockerfiles include Tesseract; non‑root user; qpdf/ClamAV added for upload hardening.
+  - Terraform: S3 Object Lock (COMPLIANCE) with KMS, RDS Multi‑AZ, WAF/ALB skeleton, Secrets Manager.
 
 ## Gaps to close before production (prioritized)
 
 1) Security & Access Control
 - RBAC roles + organization scoping enforced at DB/query level
 - Rate limiting + brute‑force protection; per‑IP/origin policy
-- File upload hardening: MIME/size caps, imagebomb protections, virus/malware scan (ClamAV)
+- File upload hardening: MIME/size caps, magic-sniff, imagebomb protections, PDF sanitize (qpdf), virus/malware scan (ClamAV)
 - Secret management: AWS Secrets Manager in all non‑local envs; key rotation
 
 2) Identity & Auth
@@ -40,7 +41,7 @@
 - Learning loop from user corrections; vendor embeddings with pgvector
 
 5) Observability & Operations
-- OTEL traces/metrics/logs to Grafana/Loki/Tempo; dashboards and SLOs
+- OTEL traces/metrics/logs to Grafana/Loki/Tempo; dashboards (`/metrics`, `/metrics/synthetic`) and SLOs
 - Alerts for OCR/AI failures, queue depth, automation rate, compliance health
 - Runbooks (incident, secret rotation, BankID outage, storage failures)
  - KPI endpoints: `/metrics/kpi`, `/metrics/flow`, `/metrics/alerts`
@@ -76,6 +77,7 @@
 - [ ] S3 Object Lock retention tested; delete denied; legal hold path
 - [ ] OTEL dashboards: OCR p95, automation rate, compliance score, error rate
 - [ ] LLM cache + cost guard in place; fallback flag works
+  - Implemented: Redis cache hooks + daily budget guard with enforce flag
 - [ ] BankID integration e2e in staging
 - [ ] Fortnox OAuth + sync job reliability
 - [ ] CI gates: tests + coverage + lint

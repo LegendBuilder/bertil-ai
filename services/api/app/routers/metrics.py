@@ -110,3 +110,28 @@ async def metrics_prometheus() -> Response:
         return Response(content="# metrics unavailable", media_type="text/plain")
 
 
+@router.get("/metrics/synthetic")
+async def synthetic_health(user=Depends(require_user)) -> dict:
+    """Synthetic healthcheck combining OCR queue, flow latency, and rate limits."""
+    flow = get_stats()
+    alerts = []
+    try:
+        depth = None
+        if settings.ocr_queue_url:
+            r = redis.from_url(settings.ocr_queue_url, decode_responses=False)
+            depth = int(await r.llen("ocr:queue"))
+        if depth is not None and depth >= settings.ocr_queue_warn_threshold:
+            alerts.append({"type": "ocr_queue", "level": "warning", "message": f"depth={depth}"})
+    except Exception:
+        alerts.append({"type": "ocr_queue", "level": "error", "message": "probe-failed"})
+    rl_blocks = get_rate_limit_block_count()
+    if rl_blocks > 0:
+        alerts.append({"type": "rate_limit", "level": "warning", "message": str(rl_blocks)})
+    status = "ok"
+    if flow.get("p95") and float(flow.get("p95") or 0.0) > 13:
+        status = "degraded"
+    if any(a.get("level") == "error" for a in alerts):
+        status = "error"
+    return {"status": status, "flow": flow, "alerts": alerts}
+
+

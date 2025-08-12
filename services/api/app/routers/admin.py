@@ -124,3 +124,27 @@ async def kb_status(user=Depends(require_user)) -> dict:
     return {"kb_loaded": True, "sections": tax_sections, "sources": [s for s in sources if s]}
 
 
+@router.get("/audit/export")
+async def export_audit_log(limit: int = 1000, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
+    """Export recent admin-audit events for DPIA/log policy evidence."""
+    _require_admin(user)
+    from sqlalchemy import select
+    from ..models import AuditLog
+    rows = (
+        await session.execute(
+            select(AuditLog).order_by(AuditLog.id.desc()).limit(limit)
+        )
+    ).scalars().all()
+    items = [
+        {
+            "id": r.id,
+            "actor": r.actor,
+            "action": r.action,
+            "target": r.target,
+            "ts": r.timestamp.isoformat() if r.timestamp else None,
+        }
+        for r in rows
+    ]
+    return {"items": items}
+
+
