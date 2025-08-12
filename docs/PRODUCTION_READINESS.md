@@ -9,6 +9,7 @@
   - OCR: Tesseract (swe+eng) in images; optional cloud OCR. Basic pre-processing.
   - Compliance: Rules framework present (R‑001/011/021/031/051 + VAT/PERIOD/DUP). Pre‑check path wired for enhanced flow.
   - Exports: SIE (MVP), PDFs. VAT report/declaration generation present.
+  - KPIs: Automation attempts/success/rate; compliance pre/post blocks; flow p95 histogram.
 - Frontend (Flutter Web/Mobile)
   - One‑tap capture/upload → OCR → enhanced autopost (fallback) → “Bokfört ✅”.
   - Web uses queue stub; mobile uses Isar queue.
@@ -42,6 +43,7 @@
 - OTEL traces/metrics/logs to Grafana/Loki/Tempo; dashboards and SLOs
 - Alerts for OCR/AI failures, queue depth, automation rate, compliance health
 - Runbooks (incident, secret rotation, BankID outage, storage failures)
+ - KPI endpoints: `/metrics/kpi`, `/metrics/flow`, `/metrics/alerts`
 
 6) Integrations
 - Fortnox: OAuth, token persistence, sync jobs, retries & backoff

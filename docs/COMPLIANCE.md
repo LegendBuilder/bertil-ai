@@ -10,4 +10,7 @@ Kodifierade regler (Pass 3+):
 
 Tester: unit + property + kända felcase; coverage ≥ 95% för rules.
 
+## KPI-koppling
+- Pre‑check block loggas i `compliance_blocked_total{phase="pre"}`
+- Post‑check block (vid skapande) loggas i `compliance_blocked_total{phase="post"}`
 

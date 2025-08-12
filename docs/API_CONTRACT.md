@@ -105,6 +105,11 @@
   }
   ```
 
+### Metrics & KPIs
+- `GET /metrics/kpi` → Automation attempts/success/rate per org + compliance pre/post blocks
+- `GET /metrics/flow` → p95 + senaste samples för foto→bokföring
+- `GET /metrics/alerts` → Samlade alerts (rate limiting, OCR‑kö m.m.)
+
 ## Compliance
 
 - GET /compliance/summary?year=… → { score, flags }

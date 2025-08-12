@@ -39,6 +39,7 @@ python -m uvicorn services.api.app.main:app --reload
 - ✅ Kontanttransaktions-gränser (penningtvätt-prevention)
 - ✅ Mönsteranalys (upptäcker misstänkta transaktioner)
 - **Endpoints**: `POST /ai/enhanced/pre-check`, `GET /ai/enhanced/compliance-health`
+  - KPI: `compliance_blocked_total{org_id,phase}` (pre/post)
 
 ### 4. **Contextual Business Intelligence** (Perfekt timing)
 - ✅ Kostnadstrendanalys med påverkanskalkyl
@@ -57,6 +58,10 @@ Struktur
     - `compliance_guardian.py` – Förebyggande compliance
     - `business_intelligence.py` – Kontextuell affärsintelligens
   - **services/api/app/routers/ai_enhanced.py** – Förbättrade AI-endpoints
+  - **Metrics/KPI**
+    - `GET /metrics/kpi` – attempts/success/rate per org och nivå
+    - `GET /metrics/flow` – p95 och sampletider för foto→bokföring
+    - `GET /metrics/alerts` – rate‑limit‑block, OCR‑kövarningar m.m.
 - services/ocr – OCR-adaptrar (Tesseract, Google Vision, AWS Textract)
 - services/ai – AI/regelmotor (ersatt av agents)
 - infra/terraform – Terraform-stubbar (S3 Object Lock, RDS, OpenSearch, Secrets)
@@ -122,6 +127,9 @@ Miljövariabler
   - `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (Textract)
   - `GOOGLE_APPLICATION_CREDENTIALS` (Vision)
   - `OTLP_ENDPOINT` (valfri)
+  - Rate limiting: `RATE_LIMIT_REDIS_URL`, `RATE_LIMIT_PER_MINUTE` (fallback till in‑process)
+  - Upload hardening: `UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME`
+  - WORM/S3: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`
 Se `.env.example` för exempelvärden. Använd separata `.env` per tjänst/miljö.
 
 CI/CD
@@ -147,9 +155,9 @@ Status (Pass 3 - AI-Enhanced)
 ### Kritiska Delar Som Saknas
 - ❌ **LLM-integration**: Ingen OpenAI/Anthropic API kopplad (kräver API-nycklar)
 - ❌ **Skatteverket-träning**: Behöver scrapa och träna på faktisk dokumentation
-- ❌ **Cachning**: Ingen Redis-cache (dyra API-anrop)
-- ❌ **Övervakning**: Ingen Prometheus/Grafana uppsatt
-- ❌ **Inlärning**: Kan inte lära från användarkorrigeringar
+- ⚠️ **Cachning**: Redis‑cache stöd finns men ej aktiverad i prod
+- ⚠️ **Observability**: Prometheus endpoints klara; Grafana dashboards pending
+- ✅ **Inlärning**: Feedback‑loop aktiv (vendor→konto/moms)
 
 ### Väg till 99% Automatisering
 **Se [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) för fullständig plan**

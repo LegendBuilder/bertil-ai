@@ -11,7 +11,7 @@
 - BankID: riktig init/status + JWT issuance
 - WORM (prod): S3 Object Lock + retention ≥ 7 år, Legal Hold
 - Fortnox: OAuth + tokenpersistens + batchsync + retry/backoff
-- VAT: EU/RC‑edgefall, representation 50% (split), drivmedel
+- VAT: EU/RC‑edgefall, representation 50% (split), drivmedel, OSS
 - LLM: OpenRouter/OpenAI + Redis‑cache + cost guards
 
 ## v0.3 (6 → 12 veckor)

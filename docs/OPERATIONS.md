@@ -15,6 +15,11 @@
 - OTLP exporter (valfri) → Grafana Tempo/Loki/Prom.
 - DLP/PII: inga personnummer i loggar (maskas i UI och centrala loggers har allow-list).
 
+### KPIs
+- `GET /metrics/kpi` – Automation attempts/success/rate per org och nivå, compliance pre/post blocks.
+- `GET /metrics/flow` – P95 för foto→bokföring och senaste samples.
+- `GET /metrics/alerts` – Samlar rate‑limit‑block, OCR‑kövarningar m.m.
+
 ## Policy (auth & CORS)
 
 - `local/test/ci`: stub‑auth tillåten; CORS kan vara `*`.

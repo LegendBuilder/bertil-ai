@@ -65,3 +65,14 @@ Kända TODOs (hög nivå)
 - CORS: Strikt utanför `local/test/ci` (tillåtlista via `CORS_ALLOW_ORIGINS`).
 - UI‑flöde: En‑knapp “Fota/Ladda upp” → OCR → AI enhanced autopost (fallback till legacy) → “Bokfört ✅”.
 
+## Observability & KPIs
+
+- Flow: `flow_photo_to_post_seconds` (Prometheus Histogram) + `/metrics/flow` (p95)
+- Automation: `automation_attempts_total`, `automation_success_total`, `automation_rate` (Gauge)
+- Compliance: `compliance_blocked_total{phase=pre|post}`
+- Sammanställning: `GET /metrics/kpi` och larm i `/metrics/alerts`
+
+## Lärande loop
+
+- `POST /review/ai/feedback` lagrar korrigeringar (vendor → konto/moms). AI mappning prioriterar detta före embeddings/regler.
+
