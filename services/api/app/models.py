@@ -179,3 +179,15 @@ class ReviewTask(Base):
     confidence: Mapped[float] = mapped_column(Numeric(5, 2), default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+
+class IntegrationToken(Base):
+    __tablename__ = "integration_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(Integer, index=True)
+    provider: Mapped[str] = mapped_column(String(40))  # e.g., fortnox
+    access_token: Mapped[str] = mapped_column(String(500))
+    refresh_token: Mapped[Optional[str]] = mapped_column(String(500))
+    scope: Mapped[Optional[str]] = mapped_column(String(200))
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
