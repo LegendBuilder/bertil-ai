@@ -93,6 +93,26 @@ async def vat_report(
     ).all()
     code_breakdown = {str(code or ""): int(cnt) for code, cnt in code_rows}
 
+    # Derive code-base totals (SE25/12/06 and RC/OSS) for the period to surface RC/OSS signals
+    rows_bases_entries = (
+        await session.execute(
+            select(
+                Verification.vat_code,
+                func.sum(func.coalesce(Entry.debit, 0))
+            )
+            .join(Entry, Entry.verification_id == Verification.id)
+            .where(Verification.date >= date(year, month, 1))
+            .where(Verification.date < end)
+            .where(~Entry.account.like("1910%"))
+            .where(~Entry.account.like("264%"))
+            .group_by(Verification.vat_code)
+        )
+    ).all()
+    code_totals: list[tuple[str | None, float]] = []
+    if rows_bases_entries:
+        code_totals = [(code, float(total or 0.0)) for code, total in rows_bases_entries]
+    totals_map = summarize_codes(code_totals)
+
     payload = {
         "period": period,
         "outgoing_vat": round(outgoing, 2),
@@ -100,6 +120,10 @@ async def vat_report(
         "net_vat": net,
         "currency": "SEK",
         "by_code": code_breakdown,
+        "extras": {
+            "rc_base": totals_map.get("rc_base", 0.0),
+            "oss_sales": totals_map.get("oss_sales", 0.0),
+        },
     }
     # Flag potential edge cases for Swedish VAT
     flags: list[str] = []
@@ -109,6 +133,10 @@ async def vat_report(
         flags.append("incoming_exceeds_outgoing")
     if any(k.upper().startswith("RC") for k in code_breakdown.keys()) and (outgoing > 0.0):
         flags.append("rc_with_outgoing_present")
+    if (payload["extras"]["rc_base"] or 0.0) > 0.0:
+        flags.append("rc_detected")
+    if (payload["extras"]["oss_sales"] or 0.0) > 0.0:
+        flags.append("oss_detected")
     payload["flags"] = flags
     if format.lower() == "pdf":
         from io import BytesIO
