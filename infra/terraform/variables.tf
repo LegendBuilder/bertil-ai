@@ -50,4 +50,16 @@ variable "public_subnet_ids" {
   default     = []
 }
 
+variable "grafana_dashboards_bucket" {
+  type        = string
+  description = "S3 bucket to store Grafana dashboard JSONs (optional)"
+  default     = ""
+}
+
+variable "grafana_dashboards_prefix" {
+  type        = string
+  description = "Prefix/path within bucket for dashboards"
+  default     = "grafana/dashboards/"
+}
+
 

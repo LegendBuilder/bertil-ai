@@ -130,7 +130,18 @@ resource "aws_lb" "app" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = []
-  subnets            = []
+  subnets            = var.public_subnet_ids
+}
+# Optionally upload Grafana dashboards to S3 for provisioning
+resource "aws_s3_object" "grafana_dashboards" {
+  for_each = var.grafana_dashboards_bucket == "" ? {} : {
+    for f in fileset(path.module, "../../grafana/dashboards/*.json") : f => f
+  }
+  bucket       = var.grafana_dashboards_bucket
+  key          = "${var.grafana_dashboards_prefix}${basename(each.value)}"
+  source       = each.value
+  content_type = "application/json"
+  etag         = filemd5(each.value)
 }
 
 resource "aws_wafv2_web_acl" "app" {
