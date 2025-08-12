@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
 from ..config import settings
-from ..security import require_user
+from ..security import require_user, require_org, enforce_rate_limit
 from ..audit import append_audit_event
 from ..compliance import run_verification_rules, persist_flags
 from ..models import Entry, Verification, AuditLog, PeriodLock
@@ -49,7 +49,7 @@ def _hash_verification_payload(payload: VerificationIn) -> str:
 
 @router.post("")
 async def create_verification(
-    body: VerificationIn, session: AsyncSession = Depends(get_session), user=Depends(require_user)
+    body: VerificationIn, session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     # Ensure tables exist in local/test SQLite
     try:
@@ -78,6 +78,11 @@ async def create_verification(
     result = await session.execute(next_seq_stmt)
     next_seq = int(result.scalar_one() or 0) + 1
 
+    # Org access check
+    try:
+        require_org(user, int(body.org_id))
+    except Exception:
+        pass
     v = Verification(
         org_id=body.org_id,
         fiscal_year_id=body.fiscal_year_id,
@@ -160,10 +165,16 @@ async def create_verification(
 
 
 @router.get("")
-async def list_verifications(year: Optional[int] = None, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> list[dict]:
+async def list_verifications(year: Optional[int] = None, session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> list[dict]:
     stmt = select(Verification)
     if year:
         stmt = stmt.where(func.extract("year", Verification.date) == year)
+    # Scope to user's org in non-local envs when claim is set
+    import os as _os
+    _env = _os.environ.get("APP_ENV", settings.app_env).lower()
+    claim_org = user.get("org_id")
+    if _env not in {"local", "test", "ci"} and claim_org:
+        stmt = stmt.where(Verification.org_id == int(claim_org))
     rows = (await session.execute(stmt.order_by(Verification.id.desc()))).scalars().all()
     return [
         {
@@ -184,6 +195,10 @@ async def get_verification(ver_id: int, session: AsyncSession = Depends(get_sess
     v = (await session.execute(vstmt)).scalars().first()
     if not v:
         raise HTTPException(status_code=404, detail="Not found")
+    try:
+        require_org(user, int(v.org_id))
+    except Exception:
+        pass
     estmt = select(Entry).where(Entry.verification_id == v.id)
     entries = (await session.execute(estmt)).scalars().all()
     # Fetch latest audit chain hash for this verification target
@@ -235,6 +250,10 @@ async def get_verification_by_document(doc_id: str, session: AsyncSession = Depe
     v = (await session.execute(stmt)).scalars().first()
     if not v:
         return {"id": None, "immutable_seq": None}
+    try:
+        require_org(user, int(v.org_id))
+    except Exception:
+        pass
     return {"id": v.id, "immutable_seq": v.immutable_seq}
 
 

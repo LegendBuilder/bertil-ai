@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
-from ..security import require_user
+from ..security import require_user, require_org, enforce_rate_limit
 from ..models import Entry, Verification, VatCode
 from ..config import settings
 from ..vat_skv import build_skv_file
@@ -20,7 +20,7 @@ router = APIRouter(tags=["reports"])
 
 
 @router.get("/trial-balance")
-async def trial_balance(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
+async def trial_balance(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> dict:
     # Aggregate entries for given year: sum(debit) - sum(credit) per account
     rows = (
         await session.execute(
@@ -45,6 +45,7 @@ async def vat_report(
     format: str = "json",
     session: AsyncSession = Depends(get_session),
     user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit),
 ) -> dict | Response:
     # Parse period
     try:
@@ -134,6 +135,7 @@ async def vat_declaration(
     period: str,  # YYYY-MM
     session: AsyncSession = Depends(get_session),
     user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit),
 ) -> dict:
     try:
         dt = datetime.strptime(period + "-01", "%Y-%m-%d").date()

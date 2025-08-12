@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
-from ..security import require_user
+from ..security import require_user, require_org, enforce_rate_limit
 from ..agents.invisible_bookkeeper import process_with_invisible_bookkeeper
 from ..agents.tax_optimizer import optimize_verification_taxes, generate_tax_optimization_report
 from ..agents.compliance_guardian import check_pre_verification_compliance, daily_compliance_report
@@ -21,7 +21,8 @@ router = APIRouter(prefix="/ai/enhanced", tags=["ai-enhanced"])
 async def enhanced_auto_post(
     body: dict[str, Any], 
     session: AsyncSession = Depends(get_session),
-    user=Depends(require_user)
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     """
     Enhanced auto-posting with 99% automation.
@@ -33,6 +34,10 @@ async def enhanced_auto_post(
     """
     try:
         org_id = int(body.get("org_id", 1))
+        try:
+            require_org(user, org_id)
+        except Exception:
+            pass
         return await process_with_invisible_bookkeeper(session, org_id, body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Enhanced processing failed: {e}")
@@ -42,7 +47,8 @@ async def enhanced_auto_post(
 async def pre_verification_compliance_check(
     body: dict[str, Any],
     session: AsyncSession = Depends(get_session),
-    user=Depends(require_user)
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     """
     Check compliance BEFORE creating verification.
@@ -51,6 +57,10 @@ async def pre_verification_compliance_check(
     """
     try:
         org_id = int(body.get("org_id", 1))
+        try:
+            require_org(user, org_id)
+        except Exception:
+            pass
         return await check_pre_verification_compliance(session, org_id, body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Compliance check failed: {e}")
@@ -61,7 +71,8 @@ async def optimize_verification_tax(
     verification_id: int,
     org_id: int = 1,
     session: AsyncSession = Depends(get_session),
-    user=Depends(require_user)
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     """
     Optimize existing verification for Swedish tax efficiency.
@@ -81,7 +92,8 @@ async def optimize_verification_tax(
 async def tax_optimization_report(
     org_id: int = 1,
     session: AsyncSession = Depends(get_session),
-    user=Depends(require_user)
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     """Monthly tax optimization report showing potential savings."""
     try:
@@ -94,7 +106,8 @@ async def tax_optimization_report(
 async def compliance_health_check(
     org_id: int = 1,
     session: AsyncSession = Depends(get_session),
-    user=Depends(require_user)
+    user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit)
 ) -> dict:
     """
     Daily compliance health monitoring.

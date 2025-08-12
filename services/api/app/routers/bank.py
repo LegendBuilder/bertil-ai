@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
 
 from ..db import get_session
-from ..security import require_user
+from ..security import require_user, require_org, enforce_rate_limit
 from ..models import BankTransaction, Verification, Entry
 from ..matching import suggest_for_transaction
 from ..config import settings
@@ -45,7 +45,7 @@ def _parse_csv(text: str) -> list[dict[str, Any]]:
 
 
 @router.post("/import")
-async def import_file(file: UploadFile = File(...), session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
+async def import_file(file: UploadFile = File(...), session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> dict:
     name = (file.filename or "").lower()
     content = (await file.read())
     rows: list[dict[str, Any]]
@@ -78,8 +78,10 @@ async def list_transactions(
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
     user=Depends(require_user),
+    _rl: None = Depends(enforce_rate_limit),
 ) -> dict:
     stmt = select(BankTransaction)
+    # Scope by org if claim present (assumes BankTransaction augmented with org in future)
     conditions = []
     if unmatched:
         conditions.append(BankTransaction.matched_verification_id.is_(None))

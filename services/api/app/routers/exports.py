@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Response, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_session
-from ..security import require_user
+from ..security import require_user, enforce_rate_limit
 from ..sie import generate_sie
 from sqlalchemy import select
 from ..models import Verification, Entry
@@ -13,13 +13,13 @@ router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 @router.get("/sie")
-async def export_sie(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> Response:
+async def export_sie(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> Response:
     content = await generate_sie(session, year)
     return Response(content=content, media_type="text/plain; charset=cp437")
 
 
 @router.get("/verifications.pdf")
-async def export_verifications_pdf(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> Response:
+async def export_verifications_pdf(year: int, session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> Response:
     # Generate a simple PDF report of verifications for the year
     from io import BytesIO
     from reportlab.lib.pagesizes import A4

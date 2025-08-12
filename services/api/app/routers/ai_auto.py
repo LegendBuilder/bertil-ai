@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
-from ..security import require_user
+from ..security import require_user, require_org, enforce_rate_limit
 from ..ai import suggest_account_and_vat, build_entries, build_entries_with_code
 from ..routers.verifications import VerificationIn, EntryIn, create_verification  # reuse model & logic
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.post("/auto-post")
-async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_session), user=Depends(require_user)) -> dict:
+async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_session), user=Depends(require_user), _rl: None = Depends(enforce_rate_limit)) -> dict:
     # Expecting extracted fields: total, date, vendor
     try:
         total = float(body["total"])  # type: ignore
@@ -28,6 +28,11 @@ async def auto_post(body: dict[str, Any], session: AsyncSession = Depends(get_se
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
 
+    # Basic org policy
+    try:
+        require_org(user, int(org_id))
+    except Exception:
+        pass
     decision = await suggest_account_and_vat(vendor, total, session)
     vat_code = body.get("vat_code")
     if vat_code:

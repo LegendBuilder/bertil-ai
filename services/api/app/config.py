@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     default_settlement_account: str = "1930"  # default bank account used for settlements
     skv_file_export_enabled: bool = False  # disabled by default; enable after validation
 
+    # Upload hardening
+    upload_max_bytes: int = 15_000_000  # 15 MB default
+    upload_allowed_mime: str = "image/jpeg,image/png"
+
+    # Rate limiting (naive, in-process)
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 120
+
     # Fortnox Integration
     fortnox_enabled: bool = False
     fortnox_stub: bool = True  # use stubbed client for tests/dev without external keys
