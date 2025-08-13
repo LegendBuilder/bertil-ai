@@ -7,6 +7,13 @@ Sveriges bästa digitala revisor – Monorepo
 Detta monorepo innehåller klient (Flutter) och backend (FastAPI) med **avancerade AI-agenter** samt infrastruktur/IaC och dokumentation. Målet är **99% automatiserad bokföring** från foto till verifikation under 20 sekunder, med svenska regelkrav (Bokföringslagen, BFN/Skatteverket, Bolagsverket, SIE).
 
 ## 🚀 AI-Agenter (Ny funktionalitet)
+### Offline‑kö (web + mobil)
+
+- När nätverket är nere köas POST/PUT/PATCH i en lokal outbox och spelas upp automatiskt när anslutning återkommer.
+- Web: IndexedDB (via idb_shim). Mobil: Isar.
+- UI: en liten badge visar antal köade objekt och en knapp “Försök igen” triggar replay.
+- Outbox‑hantering: öppna `/#/settings/outbox` för att se, försöka igen eller radera poster.
+
 
 **Bertil-AI är utrustad med fyra kraftfulla AI-agenter som levererar "Tesla-upplevelse" för bokföring.**
 

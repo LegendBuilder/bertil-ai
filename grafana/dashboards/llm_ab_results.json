@@ -28,6 +28,13 @@
       "targets": [
         { "expr": "sum by (model)(rate(llm_errors_total[5m]))" }
       ]
+    },
+    {
+      "type": "graph",
+      "title": "LLM Cost by Model (cumulative)",
+      "targets": [
+        { "expr": "llm_cost_usd" }
+      ]
     }
   ]
 }

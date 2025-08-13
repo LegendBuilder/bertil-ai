@@ -10,16 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch Skatteverket/BFN pages (example placeholders)
+      - name: Fetch Skatteverket/BFN pages (from kb_urls.json)
         run: |
           python - <<'PY'
           import requests, re, os, json
           from pathlib import Path
           from services.api.app.agents.kb_ingest import ingest_pages
-          urls = [
-            ('https://www.skatteverket.se/foretag/skatterochavdrag/utgifteriforetaget/representationochgavor', 'sv_representation.txt'),
-            ('https://www.bfn.se/regler/bokforingsnamndens-allmanna-rad', 'bfn_ar.txt')
-          ]
+          cfg = Path('kb_urls.json')
+          if cfg.exists():
+            urls_list = json.loads(cfg.read_text(encoding='utf-8'))
+          else:
+            urls_list = [
+              'https://www.skatteverket.se/foretag/skatterochavdrag/utgifteriforetaget/representationochgavor',
+              'https://www.bfn.se/regler/bokforingsnamndens-allmanna-rad',
+            ]
+          urls = [(u, f'{i}.txt') for i, u in enumerate(urls_list)]
           pages = []
           for url, fname in urls:
             try:

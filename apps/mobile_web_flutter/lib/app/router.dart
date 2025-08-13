@@ -8,6 +8,7 @@ import '../features/documents/ui/documents_page.dart';
 import '../features/reports/ui/reports_page.dart';
 import '../features/reports/ui/closing_checklist_page.dart';
 import '../features/settings/ui/settings_page.dart';
+import '../features/settings/ui/outbox_management_page.dart';
 import 'app_shell.dart';
 import '../features/auth/ui/login_page.dart';
 import '../features/auth/provider/auth_providers.dart';
@@ -51,6 +52,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/bank/reconcile', builder: (context, state) => const ReconcilePage()),
           GoRoute(path: '/inbox', builder: (context, state) => const InboxPage()),
           GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),
+          GoRoute(path: '/settings/outbox', builder: (context, state) => const OutboxManagementPage()),
         ],
       ),
     ],
