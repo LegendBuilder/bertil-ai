@@ -45,5 +45,6 @@
 - CD (blue/green): `cd.yml` workflow switchar `active_color` (blue|green) i Terraform; tjänster körs på ECS Fargate och är kopplade till två target groups bakom ALB.
 - Observability: OpenTelemetry → Grafana
 - Incident & loggning: centraliserad, PII-allow-list
+ - A/B: LLM modell‑routing kan aktiveras via env; resultat visualiseras i dashboard `llm_ab_results.json` (automation rate / latency / errors per model)
 
 

@@ -62,6 +62,7 @@ Struktur
     - `GET /metrics/kpi` – attempts/success/rate per org och nivå
     - `GET /metrics/flow` – p95 och sampletider för foto→bokföring
     - `GET /metrics/alerts` – rate‑limit‑block, OCR‑kövarningar m.m.
+    - A/B: LLM‑modellsplit via env; Grafana dashboards inkluderar automation rate/latency per model
 - services/ocr – OCR-adaptrar (Tesseract, Google Vision, AWS Textract)
 - services/ai – AI/regelmotor (ersatt av agents)
 - infra/terraform – Terraform (S3 Object Lock + KMS, RDS Multi‑AZ, OpenSearch, WAF/ALB, Secrets)
@@ -130,6 +131,7 @@ Miljövariabler
   - Rate limiting: `RATE_LIMIT_REDIS_URL`, `RATE_LIMIT_PER_MINUTE` (fallback till in‑process)
   - Upload hardening: `UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME`, `UPLOAD_ALLOW_PDF`, `PDF_SANITIZE_ENABLED`, `VIRUS_SCAN_ENABLED`
   - LLM budget: `LLM_BUDGET_DAILY_USD`, `LLM_BUDGET_ENFORCE`, `LLM_COST_PER_REQUEST_ESTIMATE_USD`
+  - LLM A/B: `LLM_AB_TEST_ENABLED`, `LLM_AB_PRIMARY_MODEL`, `LLM_AB_SECONDARY_MODEL`, `LLM_AB_SPLIT_PERCENT`
   - WORM/S3: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`
 Se `.env.example` för exempelvärden. Använd separata `.env` per tjänst/miljö.
 

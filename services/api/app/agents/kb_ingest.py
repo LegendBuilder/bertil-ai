@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Iterable
 
 import re
+try:
+    from bs4 import BeautifulSoup  # type: ignore
+except Exception:
+    BeautifulSoup = None  # type: ignore
 
 
 def _extract_snippets(text: str, url: str, section: str) -> dict:
@@ -29,10 +33,23 @@ def ingest_pages(pages: Iterable[tuple[str, str]], out_dir: str = "kb") -> list[
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     written: list[str] = []
     for i, (url, text) in enumerate(pages, start=1):
+        # Clean HTML if needed
+        if "<" in text and ">" in text and BeautifulSoup is not None:
+            try:
+                soup = BeautifulSoup(text, "html.parser")
+                # Drop nav/footer/script/style
+                for tag in soup(["script", "style", "nav", "footer", "header"]):
+                    tag.decompose()
+                text = soup.get_text("\n")
+            except Exception:
+                pass
         section = re.sub(r"[^a-z0-9]+", "_", url.lower())[:32]
         obj = _extract_snippets(text, url, section)
         path = Path(out_dir) / f"{section}.json"
-        path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+        prev = path.read_text(encoding="utf-8") if path.exists() else None
+        data = json.dumps(obj, ensure_ascii=False, indent=2)
+        if prev != data:  # simple diff to avoid churn
+            path.write_text(data, encoding="utf-8")
         written.append(str(path))
     return written
 

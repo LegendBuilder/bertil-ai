@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'outbox_storage.dart';
 
 class OutboxItem {
   OutboxItem({required this.id, required this.method, required this.url, required this.body, required this.headers});
@@ -35,28 +35,13 @@ class OutboxService {
   factory OutboxService() => _instance;
   OutboxService._internal();
 
-  Future<void> enqueue(OutboxItem item) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? <String>[];
-    list.add(jsonEncode(item.toJson()));
-    await prefs.setStringList(_key, list);
-  }
+  final _storage = OutboxStorage();
 
-  Future<List<OutboxItem>> list() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? <String>[];
-    return list.map((s) => OutboxItem.fromJson(jsonDecode(s) as Map<String, dynamic>)).toList();
-  }
+  Future<void> enqueue(OutboxItem item) => _storage.enqueue(item);
 
-  Future<void> removeById(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? <String>[];
-    final next = list.where((s) {
-      final m = jsonDecode(s) as Map<String, dynamic>;
-      return (m['id'] as String) != id;
-    }).toList();
-    await prefs.setStringList(_key, next);
-  }
+  Future<List<OutboxItem>> list() => _storage.list();
+
+  Future<void> removeById(String id) => _storage.removeById(id);
 }
 
 

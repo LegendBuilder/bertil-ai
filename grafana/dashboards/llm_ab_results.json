@@ -1,0 +1,35 @@
+{
+  "title": "LLM A/B Results",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Automation Rate by Model",
+      "targets": [
+        { "expr": "avg by (model)(automation_rate)" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Automation Success Rate by Model",
+      "targets": [
+        { "expr": "sum by (model)(rate(automation_success_total[5m])) / sum by (model)(rate(automation_attempts_total[5m]))" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "LLM Latency p95 by Model",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by (model,le))" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "LLM Errors by Model",
+      "targets": [
+        { "expr": "sum by (model)(rate(llm_errors_total[5m]))" }
+      ]
+    }
+  ]
+}
+
+

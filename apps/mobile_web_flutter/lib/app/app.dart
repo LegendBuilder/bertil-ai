@@ -6,6 +6,8 @@ import '../shared/services/network.dart';
 import '../shared/providers/success_banner_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/providers/coachmarks_provider.dart';
+import '../shared/providers/outbox_provider.dart';
+import '../shared/services/outbox_replay.dart';
 
 class BertilApp extends ConsumerStatefulWidget {
   const BertilApp({super.key});
@@ -108,6 +110,31 @@ class _BertilAppState extends ConsumerState<BertilApp> {
                     ),
                   ),
                 );
+              }),
+            ),
+            // Outbox badge + manual retry button (top-right)
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Consumer(builder: (context, ref, _) {
+                final countAsync = ref.watch(outboxCountProvider);
+                final count = countAsync.asData?.value ?? 0;
+                if (count == 0) return const SizedBox.shrink();
+                return Row(children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.orange.shade700,
+                    child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      try { OutboxReplayer().start(); } catch (_) {}
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Försök igen'),
+                  ),
+                ]);
               }),
             ),
             // Global network issue snackbar (ephemeral, auto-dismiss)
