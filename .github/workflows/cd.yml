@@ -1,0 +1,32 @@
+name: CD Blue-Green
+
+on:
+  workflow_dispatch:
+    inputs:
+      color:
+        description: "Active color to route (blue|green)"
+        required: true
+        default: "blue"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_active_color: ${{ github.event.inputs.color }}
+        run: |
+          terraform init -backend=false
+          terraform plan -var="active_color=${{ github.event.inputs.color }}"
+      - name: Terraform Apply
+        if: ${{ github.ref == 'refs/heads/main' }}
+        working-directory: infra/terraform
+        env:
+          TF_VAR_active_color: ${{ github.event.inputs.color }}
+        run: |
+          terraform apply -auto-approve -var="active_color=${{ github.event.inputs.color }}"
+
+

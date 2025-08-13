@@ -42,6 +42,7 @@
 
 - IaC: Terraform (S3 Object Lock + KMS, RDS Multi‑AZ, OpenSearch, WAF/ALB, Secrets)
 - CI/CD: GitHub Actions (lint/test/build)
+- CD (blue/green): `cd.yml` workflow switchar `active_color` (blue|green) i Terraform; tjänster körs på ECS Fargate och är kopplade till två target groups bakom ALB.
 - Observability: OpenTelemetry → Grafana
 - Incident & loggning: centraliserad, PII-allow-list
 

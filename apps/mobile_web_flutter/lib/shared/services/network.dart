@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'outbox.dart';
 
 class NetworkService {
   NetworkService._internal();
@@ -25,6 +26,8 @@ class NetworkService {
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Offline queue stub: mark requests with id for later replay (web IndexedDB/mobile Isar planned)
+        options.extra['requestId'] = options.extra['requestId'] ?? DateTime.now().microsecondsSinceEpoch.toString();
         return handler.next(options);
       },
       onError: (e, handler) async {
@@ -44,6 +47,21 @@ class NetworkService {
         final issue = _toIssue(e);
         if (issue != null) {
           _errorController.add(issue);
+          // Minimal offline queue: store failed POST/PUT/PATCH for later retry
+          try {
+            final req = e.requestOptions;
+            final method = req.method.toUpperCase();
+            if ((method == 'POST' || method == 'PUT' || method == 'PATCH') && req.data is Map<String, dynamic>) {
+              final item = OutboxItem(
+                id: (req.extra['requestId'] as String?) ?? DateTime.now().microsecondsSinceEpoch.toString(),
+                method: method,
+                url: req.path,
+                body: (req.data as Map<String, dynamic>),
+                headers: req.headers.map((k, v) => MapEntry(k, v.toString())),
+              );
+              await OutboxService().enqueue(item);
+            }
+          } catch (_) {}
         }
         return handler.next(e);
       },

@@ -1,0 +1,43 @@
+name: KB Refresh
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Mondays 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Skatteverket/BFN pages (example placeholders)
+        run: |
+          python - <<'PY'
+          import requests, re, os, json
+          from pathlib import Path
+          from services.api.app.agents.kb_ingest import ingest_pages
+          urls = [
+            ('https://www.skatteverket.se/foretag/skatterochavdrag/utgifteriforetaget/representationochgavor', 'sv_representation.txt'),
+            ('https://www.bfn.se/regler/bokforingsnamndens-allmanna-rad', 'bfn_ar.txt')
+          ]
+          pages = []
+          for url, fname in urls:
+            try:
+              r = requests.get(url, timeout=20)
+              txt = re.sub('<[^<]+?>', '', r.text)
+              pages.append((url, txt))
+            except Exception:
+              # fallback: use existing cache file if available
+              if Path(fname).exists():
+                pages.append((url, Path(fname).read_text(encoding='utf-8')))
+          ingest_pages(pages, out_dir='kb')
+          print('ingested', os.listdir('kb'))
+          PY
+      - name: Commit KB
+        run: |
+          git config user.name "kb-bot"
+          git config user.email "kb-bot@example.com"
+          git add kb/*.json || true
+          git commit -m "chore(kb): refresh snippets" || echo "no changes"
+          git push || true
+

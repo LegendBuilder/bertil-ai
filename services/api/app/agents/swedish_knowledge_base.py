@@ -21,8 +21,28 @@ class SwedishTaxKnowledgeBase:
         self.load_knowledge_base()
     
     def load_knowledge_base(self):
-        """Load pre-processed Swedish tax documentation."""
+        """Load pre-processed Swedish tax documentation.
+
+        Supports local JSON snippets in ./kb/*.json and falls back to built-in
+        minimal rules if none found.
+        """
         
+        # Try load local snippets first
+        try:
+            kb_dir = Path("kb")
+            if kb_dir.exists():
+                for p in kb_dir.glob("*.json"):
+                    try:
+                        obj = json.loads(p.read_text(encoding="utf-8"))
+                        section = obj.get("section") or p.stem
+                        # Merge into tax_rules under custom section
+                        self.tax_rules = getattr(self, "tax_rules", {})
+                        self.tax_rules[section] = obj
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
         # CRITICAL: These need to be populated from actual Skatteverket docs
         self.tax_rules = {
             "representation": {

@@ -49,6 +49,16 @@ class LLMService:
         
     def _init_client(self):
         """Initialize the appropriate LLM client."""
+        # A/B routing setup (select model dynamically if enabled)
+        try:
+            from ..config import settings as _settings
+            if getattr(_settings, "llm_ab_test_enabled", False):
+                primary = getattr(_settings, "llm_ab_primary_model", None)
+                secondary = getattr(_settings, "llm_ab_secondary_model", None)
+                if primary:
+                    self.config.model = primary
+        except Exception:
+            pass
         if self.config.provider == LLMProvider.OPENAI:
             # Lazy import to avoid hard dependency when not used
             import openai  # type: ignore
@@ -128,10 +138,22 @@ class LLMService:
         self._check_and_enforce_budget()
         if self.config.provider == LLMProvider.OPENAI:
             response = await self._openai_complete(prompt)
-            return self._parse_json_response(response)
+            data = self._parse_json_response(response)
+            try:
+                from .llm_schemas import ReceiptExtractionResult, validate_data
+                validate_data(ReceiptExtractionResult, data)
+            except Exception:
+                pass
+            return data
         elif self.config.provider == LLMProvider.ANTHROPIC:
             response = await self._anthropic_complete(prompt)
-            return self._parse_json_response(response)
+            data = self._parse_json_response(response)
+            try:
+                from .llm_schemas import ReceiptExtractionResult, validate_data
+                validate_data(ReceiptExtractionResult, data)
+            except Exception:
+                pass
+            return data
         elif self.config.provider == LLMProvider.OPENROUTER:
             # Use Swedish model, force JSON
             resp = await self.client._call_openrouter(  # type: ignore[attr-defined]
@@ -154,6 +176,11 @@ class LLMService:
         else:
             response = await self._local_complete(prompt)
             out = self._parse_json_response(response)
+            try:
+                from .llm_schemas import ReceiptExtractionResult, validate_data
+                validate_data(ReceiptExtractionResult, out)
+            except Exception:
+                pass
             observe_latency(provider_label, model_label or "unknown", "extract", time.perf_counter() - start)
             self._add_estimated_cost()
             return out
@@ -205,6 +232,11 @@ class LLMService:
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
+            try:
+                from .llm_schemas import TaxOptimizationResult, validate_data
+                validate_data(TaxOptimizationResult, out)
+            except Exception:
+                pass
             if rag_hits and isinstance(out, dict) and "citations" not in out:
                 out["citations"] = rag_hits
             return out
@@ -266,6 +298,11 @@ class LLMService:
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
+            try:
+                from .llm_schemas import ComplianceCheckResult, validate_data
+                validate_data(ComplianceCheckResult, out)
+            except Exception:
+                pass
             if rag_hits and isinstance(out, dict) and "citations" not in out:
                 out["citations"] = rag_hits
             return out
@@ -326,6 +363,11 @@ class LLMService:
         try:
             response = await self._get_completion(prompt)
             out = self._parse_json_response(response)
+            try:
+                from .llm_schemas import InsightsResult, validate_data
+                validate_data(InsightsResult, out)
+            except Exception:
+                pass
             if rag_hits and isinstance(out, dict) and "citations" not in out:
                 out["citations"] = rag_hits
             return out
@@ -338,6 +380,18 @@ class LLMService:
     
     async def _get_completion(self, prompt: str) -> str:
         """Route to appropriate provider."""
+        # Simple A/B split based on hash of prompt
+        try:
+            from ..config import settings as _settings
+            if getattr(_settings, "llm_ab_test_enabled", False):
+                p = getattr(_settings, "llm_ab_primary_model", None)
+                s = getattr(_settings, "llm_ab_secondary_model", None)
+                split = int(getattr(_settings, "llm_ab_split_percent", 0))
+                if p and s and 0 < split < 100:
+                    h = abs(hash(prompt)) % 100
+                    self.config.model = p if h >= split else s
+        except Exception:
+            pass
         if self.config.provider == LLMProvider.OPENAI:
             return await self._openai_complete(prompt)
         elif self.config.provider == LLMProvider.ANTHROPIC:

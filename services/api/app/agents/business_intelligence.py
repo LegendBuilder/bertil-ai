@@ -443,7 +443,7 @@ async def get_contextual_business_insights(session: AsyncSession, org_id: int, c
     insights = await bi.get_contextual_insights(context)
     
     # Convert to dict for API response
-    return [
+    items = [
         {
             "title": insight.title,
             "message": insight.message,
@@ -455,3 +455,20 @@ async def get_contextual_business_insights(session: AsyncSession, org_id: int, c
         }
         for insight in insights
     ]
+    # Add learning notifications from recent AiFeedback
+    try:
+        from ..models_feedback import AiFeedback
+        rows = (await session.execute(select(AiFeedback).order_by(AiFeedback.id.desc()).limit(3))).scalars().all()
+        for r in rows:
+            items.append({
+                "title": f"AI lär sig från {r.vendor}",
+                "message": "Kontoförslag uppdaterat baserat på din senaste korrigering.",
+                "impact": 0,
+                "timing": "weekly",
+                "category": "learning",
+                "action_required": False,
+                "data": {"vendor": r.vendor}
+            })
+    except Exception:
+        pass
+    return items

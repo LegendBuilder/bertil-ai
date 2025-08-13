@@ -62,4 +62,47 @@ variable "grafana_dashboards_prefix" {
   default     = "grafana/dashboards/"
 }
 
+# ECS / ECR deployment variables
+variable "ecs_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs for ECS tasks"
+  default     = []
+}
+
+variable "ecs_security_group_id" {
+  type        = string
+  description = "Security group for ECS tasks"
+  default     = ""
+}
+
+variable "ecs_task_cpu" {
+  type        = number
+  description = "Task CPU units (e.g., 256, 512, 1024)"
+  default     = 512
+}
+
+variable "ecs_task_memory" {
+  type        = number
+  description = "Task memory in MiB (e.g., 1024, 2048)"
+  default     = 1024
+}
+
+variable "ecs_desired_count" {
+  type        = number
+  description = "Desired count for API services"
+  default     = 1
+}
+
+variable "api_image" {
+  type        = string
+  description = "ECR image URI for API container"
+  default     = ""
+}
+
+variable "worker_image" {
+  type        = string
+  description = "ECR image URI for worker container"
+  default     = ""
+}
+
 

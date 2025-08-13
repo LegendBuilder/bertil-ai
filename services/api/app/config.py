@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     llm_budget_daily_usd: float = 1.0
     llm_budget_enforce: bool = False
     llm_cost_per_request_estimate_usd: float = 0.002
+    # A/B routing
+    llm_ab_test_enabled: bool = False
+    llm_ab_primary_model: str | None = None
+    llm_ab_secondary_model: str | None = None
+    llm_ab_split_percent: int = 0  # 0..100
 
     # Logging
     log_requests: bool = False
