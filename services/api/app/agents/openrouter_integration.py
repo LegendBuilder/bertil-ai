@@ -62,6 +62,75 @@ class OpenRouterClient:
             "fallback": "google/gemini-flash-1.5:free"  # General fallback
         }
     
+    async def multi_model_consensus(self, text: str, extracted_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Use multiple models for consensus validation on difficult cases."""
+        
+        if not self._check_daily_limit():
+            return {"error": "Daily limit reached", "confidence": 0.0}
+        
+        # Prepare validation prompt for consensus
+        validation_prompt = f"""
+        Validera denna svenska kvitto-extraktion:
+        
+        OCR Text: {text[:1000]}
+        
+        Extraherad data:
+        - Företag: {extracted_data.get('vendor', 'N/A')}
+        - Belopp: {extracted_data.get('total', 'N/A')}
+        - Datum: {extracted_data.get('date', 'N/A')}
+        
+        Returnera ENDAST JSON:
+        {{
+          "confidence": 0.0-1.0,
+          "corrections": {{"field": "corrected_value"}},
+          "reasoning": "kort förklaring"
+        }}
+        """
+        
+        models_to_try = [
+            self.models["swedish"],    # Primary: Swedish language model
+            self.models["accounting"], # Secondary: Math/logic model
+            self.models["simple"]      # Tertiary: Fast validation model
+        ]
+        
+        results = []
+        
+        for model in models_to_try:
+            if not self._check_daily_limit():
+                break
+                
+            try:
+                result = await self._call_openrouter(
+                    model=model,
+                    prompt=validation_prompt,
+                    task_type="consensus_validation",
+                    temperature=0.0  # Deterministic for validation
+                )
+                results.append(result)
+            except Exception:
+                continue
+        
+        if not results:
+            return {"confidence": 0.5, "corrections": {}}
+        
+        # Calculate consensus confidence
+        confidences = [r.get("confidence", 0.5) for r in results if isinstance(r.get("confidence"), (int, float))]
+        consensus_confidence = sum(confidences) / len(confidences) if confidences else 0.5
+        
+        # Merge corrections where models agree
+        all_corrections = {}
+        for result in results:
+            if "corrections" in result and isinstance(result["corrections"], dict):
+                for field, value in result["corrections"].items():
+                    all_corrections[field] = value
+        
+        return {
+            "confidence": consensus_confidence,
+            "corrections": all_corrections,
+            "model_count": len(results),
+            "reasoning": f"Consensus from {len(results)} models"
+        }
+    
     async def process_receipt(self, image_data: bytes) -> Dict[str, Any]:
         """
         Process Swedish receipt with optimal model selection.
@@ -294,6 +363,15 @@ class OpenRouterClient:
         - Standard: 25%
         """
     
+def get_openrouter_client() -> OpenRouterClient:
+    """Get singleton OpenRouter client instance."""
+    global _openrouter_client
+    if _openrouter_client is None:
+        _openrouter_client = OpenRouterClient()
+    return _openrouter_client
+
+_openrouter_client: Optional[OpenRouterClient] = None
+
     def _build_accounting_prompt(self, parsed_data: Dict[str, Any]) -> str:
         """Build accounting validation prompt."""
         

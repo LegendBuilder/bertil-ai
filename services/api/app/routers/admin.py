@@ -12,6 +12,7 @@ from ..models import VendorEmbedding
 from ..vendor_embeddings import embed_vendor_name
 from ..models import VatCode
 from ..agents.swedish_knowledge_base import get_knowledge_base, SwedishTaxRAG
+from ..config import settings
 
 
 router = APIRouter(prefix="/admin", tags=["admin"], include_in_schema=False)
@@ -93,13 +94,41 @@ async def seed_vat_codes(session: AsyncSession = Depends(get_session), user=Depe
 @router.post("/kb/rebuild")
 async def kb_rebuild(user=Depends(require_user)) -> dict:
     _require_admin(user)
-    """Rebuild or refresh the Swedish knowledge base (stubbed)."""
-    kb = get_knowledge_base()
-    rag = SwedishTaxRAG(kb)
-    # Run a couple of warmup searches
-    _ = rag.search("representation moms 50%", k=2)
-    _ = rag.search("momssatser 25 12 6", k=2)
-    return {"status": "ok", "kb_loaded": True}
+    """Rebuild or refresh the Swedish knowledge base.
+
+    If `kb_http_fetch_enabled` is true, attempt to fetch a few canonical Skatteverket/BFN pages
+    and store lightweight snippets under `kb/*.json`. Otherwise, warm up the in-repo stubs.
+    """
+    try:
+        if settings.kb_http_fetch_enabled:
+            import httpx  # type: ignore
+            from ..agents.kb_ingest import ingest_pages
+
+            urls = [
+                ("https://www.skatteverket.se/foretag/moms/momssatser.4.18e1b10334ebe8bc80002251.html", ""),
+                ("https://www.skatteverket.se/foretag/moms/inkopfranutlandet/omvandskatt.4.225c96e811ae46c823f800011530.html", ""),
+                ("https://www.bfn.se/bokforingsnamnden/allmant-om-bokforing/", ""),
+            ]
+            pages: list[tuple[str, str]] = []
+            # Fetch with short timeout and polite UA
+            async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "bertil-ai/1.0"}) as client:
+                for url, _ in urls:
+                    try:
+                        resp = await client.get(url)
+                        if resp.status_code == 200 and resp.text:
+                            pages.append((url, resp.text))
+                    except Exception:
+                        continue
+            _ = ingest_pages(pages, out_dir="kb")
+        # Always warm up in-memory KB and RAG
+        kb = get_knowledge_base()
+        rag = SwedishTaxRAG(kb)
+        _ = rag.search("representation moms 50%", k=2)
+        _ = rag.search("momssatser 25 12 6", k=2)
+        return {"status": "ok", "kb_loaded": True}
+    except Exception as exc:
+        # Keep endpoint non-fatal; surface error for admin visibility
+        return {"status": "error", "error": str(exc)}
 
 
 @router.get("/kb/status")

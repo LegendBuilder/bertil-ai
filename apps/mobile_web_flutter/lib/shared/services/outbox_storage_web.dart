@@ -56,7 +56,7 @@ class OutboxStorage {
         await c.delete();
         break;
       }
-      await c.next();
+      c.next();
     }
     await txn.completed;
   }

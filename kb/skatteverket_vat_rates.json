@@ -1,0 +1,26 @@
+{
+  "section": "skatteverket_vat_rates",
+  "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser",
+  "snippets": [
+    {
+      "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser",
+      "snippet": "Allmän momssats 25% - Momsen på de flesta varor och tjänster är 25 procent. Detta gäller till exempel kläder, elektronik, frisörtjänster och reparationstjänster."
+    },
+    {
+      "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser",
+      "snippet": "Livsmedel och restaurangmat 12% - Livsmedel har reducerad momssats på 12 procent. Detta gäller mat och dryck som serveras på restauranger, catering, takeaway. Alkoholhaltiga drycker har 25% moms."
+    },
+    {
+      "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser",
+      "snippet": "Personbefordran 6% - Transport av personer har den lägsta momssatsen på 6 procent. Detta inkluderar taxi, buss, tåg, färja och flygresor inom Sverige. Internationella flygresor kan vara momsbefriade."
+    },
+    {
+      "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser", 
+      "snippet": "Kultur och media 6% - Böcker, tidningar, tidskrifter har 6% moms. Entré till teater, konsert, bio, idrottsevenemang har också 6% moms. Hotell och campingplatser har 6% moms."
+    },
+    {
+      "url": "https://www.skatteverket.se/foretag/moms/saljavarorochtjanster/momssatser",
+      "snippet": "Omvänd skattskyldighet - Vid byggtjänster mellan näringsidkare, tjänster från EU-företag, och handel med skrot ska köparen redovisa momsen istället för säljaren. Detta kallas omvänd skattskyldighet."
+    }
+  ]
+}

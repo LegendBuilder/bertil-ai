@@ -1,0 +1,185 @@
+{
+  "section": "pension_optimization_rules",
+  "url": "internal://bertil-ai/swedish-pension-tax-optimization-2024",
+  "snippets": [
+    {
+      "category": "IPS (Individual Pension Savings)",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/pensionsparande",
+      "rules": {
+        "ips_deduction": {
+          "max_annual_deduction": 7000,
+          "currency": "SEK",
+          "year": 2024,
+          "deduction_rate": 1.0,
+          "conditions": [
+            "individual pension savings account",
+            "maximum SEK 7,000 deduction per year",
+            "funds must remain until retirement age",
+            "early withdrawal results in tax penalty"
+          ],
+          "optimization_strategy": "maximize_annual_contribution",
+          "timing_advice": "contribute early in year for maximum compound growth"
+        }
+      }
+    },
+    {
+      "category": "Occupational Pension (Tjänstepension)",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/tjanstepension",
+      "rules": {
+        "occupational_pension": {
+          "salary_conversion_limit": 0.075,
+          "max_annual_contribution": 63750,
+          "currency": "SEK",
+          "year": 2024,
+          "calculation_base": "7.5% of income up to SEK 850,000",
+          "tax_treatment": "tax_deferred",
+          "conditions": [
+            "employer must offer salary conversion",
+            "reduces taxable income immediately",
+            "taxed upon withdrawal in retirement"
+          ],
+          "optimization_strategies": [
+            "salary_sacrifice_timing",
+            "bonus_conversion_to_pension", 
+            "coordinate_with_ips_contributions"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Kapitalförsäkring (Capital Insurance)",
+      "url": "https://www.skatteverket.se/privat/skatter/privatekonomi/kapitalforsakring",
+      "rules": {
+        "capital_insurance": {
+          "tax_rate": 0.375,
+          "tax_type": "annual_return_tax",
+          "year": 2024,
+          "benefits": [
+            "tax-deferred growth on investments",
+            "no capital gains tax on internal trades",
+            "inheritance benefits",
+            "flexibility in withdrawals"
+          ],
+          "optimization_strategies": [
+            "hold_growth_investments_inside",
+            "trade_frequently_without_tax_consequences",
+            "estate_planning_benefits"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Investment Savings Account (ISK)",
+      "url": "https://www.skatteverket.se/privat/skatter/privatekonomi/investeringssparkonto",
+      "rules": {
+        "isk_account": {
+          "tax_rate": 0.375,
+          "tax_base": "standard_interest_rate",
+          "year": 2024,
+          "standard_rate_2024": 0.0175,
+          "benefits": [
+            "no capital gains tax",
+            "no dividend tax", 
+            "simplified tax reporting",
+            "unlimited deposits and withdrawals"
+          ],
+          "optimization_strategies": [
+            "hold_high_dividend_stocks",
+            "frequent_trading_without_tax_impact",
+            "tax_loss_harvesting_not_needed"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Endowment Insurance (Traditionell Försäkring)",
+      "url": "https://www.skatteverket.se/privat/skatter/privatekonomi/traditionellforsakring",
+      "rules": {
+        "endowment_insurance": {
+          "tax_treatment": "tax_deferred",
+          "minimum_term": 5,
+          "currency": "years",
+          "benefits": [
+            "tax-free growth during accumulation phase",
+            "guaranteed minimum return options",
+            "insurance protection combined with savings",
+            "estate planning advantages"
+          ],
+          "optimization_conditions": [
+            "hold for minimum 5 years for tax benefits",
+            "suitable for conservative long-term savings",
+            "coordinate with other pension savings"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Family Tax Optimization",
+      "url": "https://www.skatteverket.se/privat/skatter/familjesituation",
+      "rules": {
+        "spousal_optimization": {
+          "strategies": [
+            "income_splitting_through_joint_investments",
+            "optimize_different_tax_brackets",
+            "coordinate_pension_contributions",
+            "gift_allowances_within_family"
+          ],
+          "annual_gift_limit": 25000,
+          "currency": "SEK",
+          "conditions": ["gifts between spouses/cohabitants tax-free up to SEK 25,000"]
+        },
+        "child_benefits": {
+          "barnbidrag": {
+            "monthly_amount": 1330,
+            "age_limit": 16,
+            "currency": "SEK",
+            "tax_treatment": "tax_free"
+          },
+          "extended_barnbidrag": {
+            "monthly_amount": 1330,
+            "age_limit": 20,
+            "conditions": ["child in full-time education"],
+            "currency": "SEK"
+          },
+          "large_family_supplement": {
+            "children_2": 138,
+            "children_3": 693,
+            "children_4": 1693,
+            "children_5_plus": 2193,
+            "currency": "SEK_monthly"
+          }
+        }
+      }
+    },
+    {
+      "category": "Tax Timing Optimization",
+      "url": "internal://bertil-ai/tax-timing-strategies",
+      "rules": {
+        "income_timing": {
+          "strategies": [
+            "defer_year_end_bonuses",
+            "accelerate_deductions_into_current_year",
+            "time_ips_contributions_optimally",
+            "coordinate_realization_of_gains_losses"
+          ]
+        },
+        "deduction_timing": {
+          "strategies": [
+            "bunch_medical_expenses_into_single_year",
+            "time_charitable_donations_for_maximum_benefit",
+            "coordinate_moving_expenses_with_income_changes",
+            "optimize_education_expense_timing"
+          ]
+        },
+        "multi_year_planning": {
+          "strategies": [
+            "smooth_income_across_tax_brackets",
+            "plan_pension_withdrawals_in_retirement",
+            "coordinate_family_member_tax_situations",
+            "optimize_inheritance_and_gift_timing"
+          ]
+        }
+      }
+    }
+  ]
+}

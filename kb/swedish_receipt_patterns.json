@@ -1,0 +1,30 @@
+{
+  "section": "swedish_receipt_patterns",
+  "url": "internal://bertil-ai/receipt-patterns",
+  "snippets": [
+    {
+      "url": "internal://bertil-ai/receipt-patterns",
+      "snippet": "ICA och Coop kvitton innehåller ofta 'MVA' eller 'Moms' följt av belopp. Livsmedel märks med 'A' (12% moms), andra varor med 'B' (25% moms). Kvittot visar total moms per kategori längst ner."
+    },
+    {
+      "url": "internal://bertil-ai/receipt-patterns", 
+      "snippet": "McDonald's, Burger King, Max visar ofta 'Moms 12%' för mat och dryck, 'Moms 25%' för leksaker. Kvittot innehåller org.nr format '556xxx-xxxx' som hjälper med företagsidentifiering."
+    },
+    {
+      "url": "internal://bertil-ai/receipt-patterns",
+      "snippet": "Taxi kvitton visar '6% moms' och innehåller ofta 'Taxameter', 'Start', 'Stopp', 'Sträcka'. Svenska taxi-företag: Taxi Kurir, Taxi Stockholm, Sverigetaxi. Kvitto måste ha taxilicens-nummer."
+    },
+    {
+      "url": "internal://bertil-ai/receipt-patterns",
+      "snippet": "SJ tåg kvitton: '6% moms' för personresor, 'Resa från-till', 'Avgång', 'Ankomst'. Andra transportföretag: Västtrafik, SL (Stockholms Lokaltrafik), Flygbussarna har liknande format."
+    },
+    {
+      "url": "internal://bertil-ai/receipt-patterns", 
+      "snippet": "Shell, Circle K, Preem kvitton: 'Bensin' eller 'Diesel' följt av liter och pris. Moms 25% på bränsle. Ofta köp av 'Korv' eller 'Kaffe' som också har 25% moms från mackar."
+    },
+    {
+      "url": "internal://bertil-ai/receipt-patterns",
+      "snippet": "Handelsbanken, SEB, Nordea kortautomat kvitton saknar moms men visar 'Kortterminal', 'Kortavgift', 'Valutakurs'. Bankavgifter är momsbefriade enligt svensk lag."
+    }
+  ]
+}

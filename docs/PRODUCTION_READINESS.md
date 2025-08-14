@@ -12,11 +12,13 @@
   - KPIs: Automation attempts/success/rate; compliance pre/post blocks; flow p95 histogram.
 - Frontend (Flutter Web/Mobile)
   - One‑tap capture/upload → OCR → enhanced autopost (fallback) → “Bokfört ✅”.
-  - Web uses queue stub; mobile uses Isar queue.
-  - API base configured via `API_BASE_URL`.
+  - Offline‑kö: Web (IndexedDB via idb_shim), Mobil (Isar). Replay med backoff, UI‑badge och `/settings/outbox` för hantering.
+  - API base via `API_BASE_URL`.
 - Infra/DevOps
-  - Dockerfiles include Tesseract; non‑root user; qpdf/ClamAV added for upload hardening.
-  - Terraform: S3 Object Lock (COMPLIANCE) with KMS, RDS Multi‑AZ, WAF/ALB skeleton, Secrets Manager.
+  - Dockerfiles include Tesseract; non‑root user; qpdf/ClamAV for upload hardening.
+  - Terraform: S3 Object Lock (COMPLIANCE) with KMS, RDS Multi‑AZ, WAF/ALB skeleton, OpenSearch, Secrets Manager.
+  - CI: lint/tests, SBOM (pip‑audit/CycloneDX), SAST (CodeQL), DAST (ZAP), optional Trivy/Grype.
+  - CD: blue/green workflow stub to flip ALB target group via Terraform.
 
 ## Gaps to close before production (prioritized)
 
@@ -35,26 +37,27 @@
 - Lifecycle policies, region enforcement (SE/EU), cross‑region backup
 - Document hashing/dedup at ingest; duplicate detection surfaced in UI
 
-4) AI & Automation Quality
-- LLM provider(s) with cache (Redis) and cost guardrails
-- Swedish KB/RAG for Skatteverket/BFN; evaluation corpus; acceptance thresholds
-- Learning loop from user corrections; vendor embeddings with pgvector
+ 4) AI & Automation Quality
+ - LLM cache (Redis hooks) + budget guard; strict JSON schemas for extraction/tax/compliance/insights.
+ - RAG KB loader supports local `kb/*.json`; weekly GH Action refresh (basic clean + diff). Acceptance tests in progress.
+ - Learning loop: `AiFeedback` → `VendorEmbedding`; refresh scripts available.
+ - A/B routing via env (model split). Grafana dashboard covers rate/latency/errors/cost per model.
 
-5) Observability & Operations
-- OTEL traces/metrics/logs to Grafana/Loki/Tempo; dashboards (`/metrics`, `/metrics/synthetic`) and SLOs
-- Alerts for OCR/AI failures, queue depth, automation rate, compliance health
-- Runbooks (incident, secret rotation, BankID outage, storage failures)
- - KPI endpoints: `/metrics/kpi`, `/metrics/flow`, `/metrics/alerts`
+ 5) Observability & Operations
+ - OTEL traces/metrics/logs to Grafana/Loki/Tempo; dashboards (`/metrics`, `/metrics/synthetic`) and SLOs.
+ - KPI endpoints: `/metrics/kpi`, `/metrics/flow`, `/metrics/alerts`.
+ - Dashboards: Flow p95, Automation KPIs, LLM A/B Results (includes success rate and cost), System Health.
+ - Alerts: OCR queue depth, rate‑limit blocks; extensible.
 
 6) Integrations
 - Fortnox: OAuth, token persistence, sync jobs, retries & backoff
 - Bolagsverket: XBRL + e‑inlämning path (staging → prod)
 - Bankfeeds (Bankgirot/PSD2) roadmap
 
-7) Testing & Quality
-- Integration/E2E tests: upload→OCR→autopost→compliance→export (golden outputs)
-- Property tests for SIE/VAT; load tests to 1k req/h; fuzz uploads
-- Security testing (SAST/DAST), dependency scanning, SBOM
+ 7) Testing & Quality
+ - E2E tests: upload→OCR→autopost→compliance→export.
+ - Schema tests for LLM outputs.
+ - Security testing (SAST/DAST), dependency scanning, SBOM in CI.
 
 ## Environment policy
 
@@ -71,16 +74,16 @@
 ## Readiness checklist
 
 - [ ] JWT enforced in staging/prod for all protected routes
-- [ ] RBAC + org scoping on queries/services
+- [x] RBAC + org scoping on queries/services (documents/verifications/bank/review)
 - [ ] CORS restricted to allowed origins
-- [ ] Malware scan on uploads; MIME/size enforcement
-- [ ] S3 Object Lock retention tested; delete denied; legal hold path
-- [ ] OTEL dashboards: OCR p95, automation rate, compliance score, error rate
-- [ ] LLM cache + cost guard in place; fallback flag works
-  - Implemented: Redis cache hooks + daily budget guard with enforce flag
-- [ ] BankID integration e2e in staging
+- [x] Upload hardening (MIME/magic, size caps, imagebomb, qpdf sanitize, ClamAV)
+- [x] S3 Object Lock (COMPLIANCE) with KMS; bucket policy prevents deletes
+- [x] Dashboards: OCR p95, automation rate, LLM A/B (success, latency, errors, cost)
+- [x] LLM cache hooks + budget guard; strict schemas
+- [ ] BankID e2e in staging (keys pending)
 - [ ] Fortnox OAuth + sync job reliability
-- [ ] CI gates: tests + coverage + lint
+- [x] CI gates: tests + lint + SBOM + SAST/DAST
+- [x] Offline queue (web IndexedDB / mobile Isar) with replay + UI badge and management screen
 
 ## Step‑by‑step rollout (4 weeks)
 

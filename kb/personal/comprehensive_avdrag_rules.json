@@ -1,0 +1,229 @@
+{
+  "section": "comprehensive_avdrag_rules",
+  "url": "internal://bertil-ai/swedish-tax-deductions-2024",
+  "snippets": [
+    {
+      "category": "Travel and Commute Deductions",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/resor",
+      "rules": {
+        "car_travel_general": {
+          "rate_per_10km": 50,
+          "currency": "SEK",
+          "year": 2024,
+          "conditions": ["journey to/from work", "own car", "distance >50km total"]
+        },
+        "employer_car_travel": {
+          "rate_per_10km": 24,
+          "currency": "SEK", 
+          "year": 2024,
+          "conditions": ["employer-provided car"]
+        },
+        "electric_car_travel": {
+          "rate_per_10km": 19,
+          "currency": "SEK",
+          "year": 2024,
+          "conditions": ["car runs solely on electricity"]
+        },
+        "disability_travel": {
+          "rate_per_10km": 50,
+          "currency": "SEK",
+          "conditions": ["old age, sickness or disability", "necessary travel to/from work"]
+        }
+      }
+    },
+    {
+      "category": "ROT Deductions (Home Renovation)",
+      "url": "https://www.skatteverket.se/privat/skatter/rotochrut/rot",
+      "rules": {
+        "rot_deduction": {
+          "max_annual_deduction": 75000,
+          "currency": "SEK",
+          "year": 2024,
+          "deduction_rate": 0.30,
+          "eligible_services": [
+            "painting", "wallpapering", "flooring installation", "kitchen renovation",
+            "bathroom renovation", "electrical work", "plumbing", "masonry work",
+            "carpentry", "roofing", "insulation", "heating system installation",
+            "window replacement", "door installation"
+          ],
+          "conditions": [
+            "work performed on owned residence",
+            "payment made electronically",
+            "labor costs only (not materials)",
+            "contractor must be registered"
+          ]
+        }
+      }
+    },
+    {
+      "category": "RUT Deductions (Home Services)",
+      "url": "https://www.skatteverket.se/privat/skatter/rotochrut/rut",
+      "rules": {
+        "rut_deduction": {
+          "max_annual_deduction": 75000,
+          "currency": "SEK", 
+          "year": 2024,
+          "deduction_rate": 0.50,
+          "eligible_services": [
+            "house cleaning", "window cleaning", "laundry services", "ironing",
+            "simple gardening", "snow removal", "minor repairs", "moving services",
+            "computer help", "lawn mowing", "hedge trimming"
+          ],
+          "conditions": [
+            "services performed at home or nearby area",
+            "payment made electronically", 
+            "contractor must be registered for F-tax"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Temporary Work Deductions",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/tillfallitarbete",
+      "rules": {
+        "temporary_work_sweden": {
+          "daily_deduction": 145,
+          "currency": "SEK",
+          "year": 2024,
+          "conditions": ["temporary work within Sweden", "distance >50km from residence"]
+        },
+        "temporary_work_abroad": {
+          "daily_deduction": 87,
+          "currency": "SEK", 
+          "year": 2024,
+          "conditions": ["temporary work abroad", "first month only for meals/small expenses"]
+        }
+      }
+    },
+    {
+      "category": "Work Equipment and Protective Clothing",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/arbetsrelaterade",
+      "rules": {
+        "protective_equipment": {
+          "deduction_type": "full_cost",
+          "eligible_items": [
+            "safety helmets", "protective goggles", "hearing protection", 
+            "steel-toed boots", "work gloves", "safety harnesses", "reflective clothing"
+          ],
+          "conditions": ["exclusively used for work", "required by employer or law"]
+        },
+        "work_tools": {
+          "deduction_type": "full_cost",
+          "eligible_items": [
+            "hand tools", "specialized equipment", "work uniforms",
+            "professional software", "trade-specific instruments"
+          ],
+          "conditions": ["exclusively used for work", "not reimbursed by employer"]
+        }
+      }
+    },
+    {
+      "category": "Education and Training Deductions",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/utbildning",
+      "rules": {
+        "work_related_education": {
+          "deduction_type": "full_cost",
+          "eligible_expenses": [
+            "course fees", "examination fees", "required textbooks", 
+            "certification costs", "professional development courses"
+          ],
+          "conditions": [
+            "directly related to current work", "maintains or improves job skills",
+            "not general education", "not reimbursed by employer"
+          ]
+        },
+        "travel_to_education": {
+          "deduction_rate": "standard_travel_rates",
+          "conditions": ["education location >50km from home", "work-related training"]
+        }
+      }
+    },
+    {
+      "category": "Medical Expense Deductions",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/sjukvard",
+      "rules": {
+        "medical_expenses": {
+          "threshold": 5000,
+          "currency": "SEK",
+          "year": 2024,
+          "deduction_type": "expenses_above_threshold",
+          "eligible_expenses": [
+            "prescription medications", "medical treatments", "hospital care",
+            "dental care", "physiotherapy", "medical equipment", 
+            "travel to medical appointments", "glasses/contact lenses"
+          ],
+          "conditions": [
+            "not covered by insurance", "medically necessary",
+            "expenses above SEK 5,000 threshold deductible"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Union Fees and Professional Memberships",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/fackforeningsavgifter",
+      "rules": {
+        "union_fees": {
+          "deduction_type": "full_cost",
+          "eligible_fees": [
+            "trade union membership", "professional association fees",
+            "unemployment insurance fund", "professional liability insurance"
+          ],
+          "conditions": ["work-related membership", "not social or recreational"]
+        }
+      }
+    },
+    {
+      "category": "Charitable Donations",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/gavor",
+      "rules": {
+        "charitable_donations": {
+          "min_donation": 200,
+          "max_deduction": 6000,
+          "currency": "SEK",
+          "year": 2024,
+          "conditions": [
+            "registered charity organization", "donation ≥200 SEK per organization",
+            "maximum 6,000 SEK total deduction per year"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Moving Expenses",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/flyttkostnader",
+      "rules": {
+        "moving_expenses": {
+          "deduction_type": "full_reasonable_cost",
+          "eligible_expenses": [
+            "moving company fees", "truck rental", "temporary storage",
+            "travel expenses during move", "connection fees for utilities"
+          ],
+          "conditions": [
+            "move due to new job or job relocation", "distance >50km closer to work",
+            "not reimbursed by employer"
+          ]
+        }
+      }
+    },
+    {
+      "category": "Double Housing Deductions",
+      "url": "https://www.skatteverket.se/privat/skatter/arbeteochinkomst/skattepadinkomst/avdrag/dubbelbostad",
+      "rules": {
+        "double_housing": {
+          "max_monthly_deduction": 11000,
+          "currency": "SEK",
+          "year": 2024,
+          "eligible_expenses": [
+            "rent for temporary accommodation", "hotel costs", 
+            "reasonable living expenses at work location"
+          ],
+          "conditions": [
+            "maintain residence at home", "work location >50km from home",
+            "temporary work arrangement", "maximum 2 years"
+          ]
+        }
+      }
+    }
+  ]
+}

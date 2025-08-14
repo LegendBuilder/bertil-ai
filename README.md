@@ -6,16 +6,27 @@ Sveriges bästa digitala revisor – Monorepo
 
 Detta monorepo innehåller klient (Flutter) och backend (FastAPI) med **avancerade AI-agenter** samt infrastruktur/IaC och dokumentation. Målet är **99% automatiserad bokföring** från foto till verifikation under 20 sekunder, med svenska regelkrav (Bokföringslagen, BFN/Skatteverket, Bolagsverket, SIE).
 
-## 🚀 AI-Agenter (Ny funktionalitet)
+## 🚀 AI-Agenter & Personal Skatteavdrag (Ny funktionalitet)
+
+### 🇸🇪 Personal Tax Optimization - NYHET!
+
+**Bertil AI hjälper nu privatpersoner med skatteavdrag - första plattformen som kombinerar företags- och privatekonomisk optimering!**
+
+- ✅ **Smart kvittoscanning**: AI upptäcker automatiskt ROT/RUT, sjukkostnader, arbetsutrustning
+- ✅ **Svenska skatteregler**: ROT (30%), RUT (50%), medicinska kostnader (över 5K), arbetskostnader  
+- ✅ **Familjeoptimering**: Sammanräkningar, barnbidrag, optimal fördelning mellan partners
+- ✅ **IPS & pensionsoptimering**: Maximera skatteavdrag för pensionssparande
+- ✅ **Skatteåterbäringsberäkning**: Estimera återbäring baserat på upptäckta avdrag
+- **Endpoints**: `/personal-tax/*` - analyze-receipt, optimize-family-taxes, pension-optimization
+
 ### Offline‑kö (web + mobil)
 
 - När nätverket är nere köas POST/PUT/PATCH i en lokal outbox och spelas upp automatiskt när anslutning återkommer.
 - Web: IndexedDB (via idb_shim). Mobil: Isar.
-- UI: en liten badge visar antal köade objekt och en knapp “Försök igen” triggar replay.
+- UI: en liten badge visar antal köade objekt och en knapp "Försök igen" triggar replay.
 - Outbox‑hantering: öppna `/#/settings/outbox` för att se, försöka igen eller radera poster.
 
-
-**Bertil-AI är utrustad med fyra kraftfulla AI-agenter som levererar "Tesla-upplevelse" för bokföring.**
+**Bertil-AI är utrustad med kraftfulla AI-agenter som levererar "Tesla-upplevelse" för både företag och privatpersoner.**
 
 Aktivering (dev):
 
@@ -190,15 +201,20 @@ Status (Pass 3 - AI-Enhanced)
 - **Affärsintelligens-motor** för kostnadstrender och kassaflöde
 - SIE/PDF-exporter, DLP-maskning util, E2E-prestandatest
 
-### Flutter (Oförändrat)
+### Flutter (Förbättrat - Personal Skatteavdrag)
+- **NY: Skatteavdrag-flik**: Personal tax dashboard med svenska skatteoptimering
+- **Smart kvittoscanning**: Enhanced capture som analyserar både företag och privat
+- **Skattenotifier**: Popup som föreslår Smart Capture för potentiella skatteavdrag
 - BankID-stubflöde, Kamera/Upload (auto-crop, blänkvarning, batch)
 - Dokumentlista/detalj (OCR-overlay, explainability, öppna verifikation)
 - Dashboard (Trygghetsmätare + flaggor), Verifikationsvy (entries, audit-hash, åtgärder)
 - Rapporter (SIE/PDF-knappar)
 
 ### Konkurrensfördelar
-- **vs Fortnox (349-500 SEK)**: Lägre pris (299 SEK) + zero user effort
+- **vs Fortnox (349-500 SEK)**: Lägre pris (299 SEK) + zero user effort + personal skatteavdrag
 - **vs Visma/Bokio**: 99% automatisering (de har ~60-80%) + proaktiv optimering
-- **Målgrupp**: 18K användare, ROI 200-500% för småföretag
+- **UNIK**: Första plattformen som kombinerar företags- och privatekonomisk optimering
+- **Personal Tax Market**: Ingen konkurrent erbjuder AI-driven ROT/RUT/sjukkostnads-optimering
+- **Målgrupp**: 18K småföretag + privata användare, ROI 200-500% för företag, 1000-3000 kr/år skattebesparingar för privatpersoner
 
 

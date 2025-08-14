@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     llm_ab_primary_model: str | None = None
     llm_ab_secondary_model: str | None = None
     llm_ab_split_percent: int = 0  # 0..100
+    
+    # OpenRouter specific models
+    llm_model: str | None = None
+    llm_temperature: float = 0.1
+    
+    # Knowledge base
+    kb_http_fetch_enabled: bool = False
 
     # Logging
     log_requests: bool = False
@@ -97,6 +104,9 @@ class Settings(BaseSettings):
     email_imap_user: str | None = None
     email_imap_password: str | None = None
     email_sender_rules_json: str | None = None  # JSON mapping sender->meta (e.g., {"invoices@x.com": {"type":"invoice"}})
+
+    # Knowledge base (RAG) HTTP fetch toggle
+    kb_http_fetch_enabled: bool = False
 
 
 settings = Settings()  # type: ignore[call-arg]

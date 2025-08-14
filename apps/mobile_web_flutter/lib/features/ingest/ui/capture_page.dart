@@ -11,6 +11,7 @@ import '../../documents/domain/document.dart';
 import '../../../shared/providers/success_banner_provider.dart';
 import '../../../shared/services/analytics.dart';
 import '../../../shared/services/queue/queue_service.dart';
+import 'package:go_router/go_router.dart';
 
 class CapturePage extends ConsumerStatefulWidget {
   const CapturePage({super.key});
@@ -91,6 +92,9 @@ class _CapturePageState extends ConsumerState<CapturePage> {
           _message = 'Bokfört ✅';
         });
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Klart! Vi har bokfört automatiskt.')));
+        
+        // Show tax benefits notification
+        _showTaxBenefitsNotification(context);
       }
     } catch (e) {
       // Offline fallback: queue job
@@ -114,6 +118,48 @@ class _CapturePageState extends ConsumerState<CapturePage> {
         });
       }
     }
+  }
+
+  void _showTaxBenefitsNotification(BuildContext context) {
+    // Show a notification about potential tax benefits
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              const Text('💡 Potential Tax Savings!'),
+            ],
+          ),
+          content: const Text(
+            'This receipt might contain personal tax deductions! '
+            'Use our AI-powered Smart Capture to discover potential savings '
+            'like ROT/RUT, medical expenses, and more.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Maybe Later'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/enhanced-capture');
+              },
+              icon: const Icon(Icons.camera_enhance),
+              label: const Text('Try Smart Capture'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

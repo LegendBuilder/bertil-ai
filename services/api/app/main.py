@@ -5,7 +5,7 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import engine, Base
-from .routers import auth, ingest, verifications, compliance, exports, reports, ai_auto, ai_enhanced, bolagsverket, metrics, admin, storage, bank, vat, imports, einvoice, period, fortnox, review, accruals, email_ingest
+from .routers import auth, ingest, verifications, compliance, exports, reports, ai_auto, ai_enhanced, bolagsverket, metrics, admin, storage, bank, vat, imports, einvoice, period, fortnox, review, accruals, email_ingest, personal_tax
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -108,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(review.router)
     app.include_router(accruals.router)
     app.include_router(email_ingest.router)
+    app.include_router(personal_tax.router)
 
     # Minimal DLP middleware: mask personal numbers in paths/queries
     @app.middleware("http")
@@ -142,14 +143,16 @@ def create_app() -> FastAPI:
         return response
 
     # Defensive CORS header fallback for dev: ensures responses always include ACAO
-    @app.middleware("http")
-    async def cors_fallback_middleware(request: Request, call_next):
-        # Let Starlette CORSMiddleware handle preflight; this ensures normal responses carry headers
-        response = await call_next(request)
-        response.headers.setdefault("Access-Control-Allow-Origin", "*")
-        response.headers.setdefault("Access-Control-Allow-Methods", "*")
-        response.headers.setdefault("Access-Control-Allow-Headers", "*")
-        return response
+    # In local/test/ci only, add a permissive CORS header fallback to simplify dev
+    if settings.app_env.lower() in {"local", "test", "ci"}:
+        @app.middleware("http")
+        async def cors_fallback_middleware(request: Request, call_next):
+            # Let Starlette CORSMiddleware handle preflight; this ensures normal responses carry headers in dev
+            response = await call_next(request)
+            response.headers.setdefault("Access-Control-Allow-Origin", "*")
+            response.headers.setdefault("Access-Control-Allow-Methods", "*")
+            response.headers.setdefault("Access-Control-Allow-Headers", "*")
+            return response
 
     @app.on_event("startup")
     async def on_startup() -> None:

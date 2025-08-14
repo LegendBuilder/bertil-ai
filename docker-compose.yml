@@ -23,10 +23,21 @@ services:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/bertil
       CORS_ALLOW_ORIGINS: "*"
       OCR_PROVIDER: stub
+      OCR_QUEUE_URL: ${OCR_QUEUE_URL:-}
       LLM_PROVIDER: openrouter
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       LLM_CACHE_URL: redis://redis:6379/1
       LLM_CACHE_TTL_HOURS: 24
+      # Redis-based rate limiting (optional)
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/2
+      RATE_LIMIT_PER_MINUTE: 180
+      # A/B testing (optional)
+      LLM_AB_TEST_ENABLED: ${LLM_AB_TEST_ENABLED:-false}
+      LLM_AB_PRIMARY_MODEL: ${LLM_AB_PRIMARY_MODEL:-meta-llama/llama-3.1-70b-instruct:free}
+      LLM_AB_SECONDARY_MODEL: ${LLM_AB_SECONDARY_MODEL:-deepseek/deepseek-chat:free}
+      LLM_AB_SPLIT_PERCENT: ${LLM_AB_SPLIT_PERCENT:-50}
+      # Knowledge base fetch (admin)
+      KB_HTTP_FETCH_ENABLED: ${KB_HTTP_FETCH_ENABLED:-false}
     depends_on:
       - db
       - redis
@@ -40,12 +51,14 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/bertil
       OCR_QUEUE_URL: redis://redis:6379/0
+      # Optional: tune OCR queue behavior via env in workers later
     depends_on:
       - db
       - redis
 
 volumes:
   db_data:
+
 
 
 

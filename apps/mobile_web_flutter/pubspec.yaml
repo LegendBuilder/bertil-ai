@@ -27,6 +27,7 @@ dependencies:
   image: ^4.2.0
   shared_preferences: ^2.3.2
   connectivity_plus: ^6.0.5
+  idb_shim: ^2.5.2
   # isar packages reserved for offline queue in later passes
   # isar: ^3.1.0+1
   # isar_flutter_libs: ^3.1.0+1

@@ -8,6 +8,7 @@ class AppShell extends StatelessWidget {
   static const _tabs = [
     _TabItem(label: 'Hem', icon: Icons.home_outlined, route: '/'),
     _TabItem(label: 'Fota', icon: Icons.camera_alt_outlined, route: '/capture'),
+    _TabItem(label: 'Skatteavdrag', icon: Icons.savings_outlined, route: '/personal-tax'),
     _TabItem(label: 'Dokument', icon: Icons.description_outlined, route: '/documents'),
     _TabItem(label: 'Rapporter', icon: Icons.bar_chart_outlined, route: '/reports'),
     _TabItem(label: 'Konto', icon: Icons.person_outline, route: '/settings'),
