@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 try:
@@ -191,4 +191,77 @@ class IntegrationToken(Base):
     refresh_token: Mapped[Optional[str]] = mapped_column(String(500))
     scope: Mapped[Optional[str]] = mapped_column(String(200))
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    orgnr: Mapped[Optional[str]] = mapped_column(String(20))  # Swedish org number
+    vat_number: Mapped[Optional[str]] = mapped_column(String(30))  # EU VAT number
+    email: Mapped[Optional[str]] = mapped_column(String(200))
+    address: Mapped[Optional[str]] = mapped_column(String(300))
+    postal_code: Mapped[Optional[str]] = mapped_column(String(10))
+    city: Mapped[Optional[str]] = mapped_column(String(100))
+    country: Mapped[str] = mapped_column(String(2), default="SE")  # ISO country code
+    payment_terms: Mapped[int] = mapped_column(Integer, default=30)  # days
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="customer")
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    invoice_number: Mapped[str] = mapped_column(String(50), index=True)  # Sequential number
+    invoice_date: Mapped[datetime] = mapped_column(Date)
+    due_date: Mapped[datetime] = mapped_column(Date)
+    currency: Mapped[str] = mapped_column(String(3), default="SEK")
+    subtotal: Mapped[float] = mapped_column(Numeric(14, 2))  # Amount before VAT
+    vat_amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    total_amount: Mapped[float] = mapped_column(Numeric(14, 2))  # Amount including VAT
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft|sent|paid|overdue|cancelled
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    pdf_uri: Mapped[Optional[str]] = mapped_column(String(500))  # S3 URI for generated PDF
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    verification_id: Mapped[Optional[int]] = mapped_column(ForeignKey("verifications.id"))  # When paid
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    customer: Mapped["Customer"] = relationship("Customer", back_populates="invoices")
+    line_items: Mapped[list["InvoiceLineItem"]] = relationship("InvoiceLineItem", back_populates="invoice")
+
+
+class InvoiceLineItem(Base):
+    __tablename__ = "invoice_line_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True)
+    description: Mapped[str] = mapped_column(String(500))
+    quantity: Mapped[float] = mapped_column(Numeric(10, 3), default=1.0)
+    unit_price: Mapped[float] = mapped_column(Numeric(14, 2))
+    vat_rate: Mapped[float] = mapped_column(Numeric(5, 2))  # 25.0 for 25%
+    vat_code: Mapped[Optional[str]] = mapped_column(String(20))  # SE25, SE12, SE06
+    line_total: Mapped[float] = mapped_column(Numeric(14, 2))  # quantity * unit_price
+    line_vat: Mapped[float] = mapped_column(Numeric(14, 2))  # VAT amount for this line
+    
+    # Relationships
+    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="line_items")
+
+
+class InvoiceSequence(Base):
+    __tablename__ = "invoice_sequences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
+    current_number: Mapped[int] = mapped_column(Integer, default=0)
+    prefix: Mapped[str] = mapped_column(String(10), default="2024")  # Year prefix
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

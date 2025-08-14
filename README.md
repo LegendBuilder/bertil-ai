@@ -19,6 +19,19 @@ Detta monorepo innehåller klient (Flutter) och backend (FastAPI) med **avancera
 - ✅ **Skatteåterbäringsberäkning**: Estimera återbäring baserat på upptäckta avdrag
 - **Endpoints**: `/personal-tax/*` - analyze-receipt, optimize-family-taxes, pension-optimization
 
+### 📄 Professional Invoice Management - NYHET!
+
+**Komplett faktureringslösning med AI-optimerad design och svensk regelefterlevnad!**
+
+- ✅ **Svenskt fakturaformat**: Automatisk momskategorisering (SE25/SE12/SE06/RC25)
+- ✅ **Löpnummersystem**: Automatisk generering enligt svenska krav
+- ✅ **Professionell design**: Bertil AI-märkt PDF med svenskt utseende
+- ✅ **E-postintegration**: SMTP-konfiguration för automatisk fakturautskick
+- ✅ **Kundhantering**: Komplett CRM med organisationsnummer och momsregistrering
+- ✅ **Statutshantering**: Utkast → Skickad → Betald med automatisk uppföljning
+- ✅ **Dashboard**: Översikt över utestående, försenade och månadens omsättning
+- **Endpoints**: `/invoices/*` - customers, create, send, pdf-generation, email-status
+
 ### Offline‑kö (web + mobil)
 
 - När nätverket är nere köas POST/PUT/PATCH i en lokal outbox och spelas upp automatiskt när anslutning återkommer.
@@ -150,6 +163,7 @@ Miljövariabler
   - Upload hardening: `UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME`, `UPLOAD_ALLOW_PDF`, `PDF_SANITIZE_ENABLED`, `VIRUS_SCAN_ENABLED`
   - LLM budget: `LLM_BUDGET_DAILY_USD`, `LLM_BUDGET_ENFORCE`, `LLM_COST_PER_REQUEST_ESTIMATE_USD`
   - LLM A/B: `LLM_AB_TEST_ENABLED`, `LLM_AB_PRIMARY_MODEL`, `LLM_AB_SECONDARY_MODEL`, `LLM_AB_SPLIT_PERCENT`
+  - Invoice Email: `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `SMTP_USE_TLS`
   - WORM/S3: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`
 Se `.env.example` för exempelvärden. Använd separata `.env` per tjänst/miljö.
 
@@ -165,13 +179,16 @@ Jurisdiktion & lagring
 
 Status (Pass 3 - AI-Enhanced)
 
-## ⚠️ VIKTIGT: Nuvarande Status - 60% Produktionsklar
+## ⚠️ VIKTIGT: Nuvarande Status - 75% Produktionsklar
 
 ### Implementerat (Grund finns)
 - ✅ **AI-Agent arkitektur**: Fyra agenter med svensk affärslogik 
 - ✅ **API-endpoints**: Alla `/ai/enhanced/*` endpoints fungerar
 - ✅ **Grundläggande regelmotor**: Svenska moms- och skatteregler (förenklat)
 - ✅ **Säker integration**: Wrapper-pattern, fallback till existerande system
+- ✅ **Professional Invoice System**: Komplett faktureringslösning med svensk regelefterlevnad
+- ✅ **Email Integration**: SMTP-konfiguration för automatisk fakturautskick
+- ✅ **Enhanced PDF Generation**: Bertil AI-märkt design med svensk compliance
 
 ### Kritiska Delar Som Saknas
 - ❌ **LLM-integration**: Ingen OpenAI/Anthropic API kopplad (kräver API-nycklar)
@@ -201,10 +218,12 @@ Status (Pass 3 - AI-Enhanced)
 - **Affärsintelligens-motor** för kostnadstrender och kassaflöde
 - SIE/PDF-exporter, DLP-maskning util, E2E-prestandatest
 
-### Flutter (Förbättrat - Personal Skatteavdrag)
+### Flutter (Förbättrat - Personal Skatteavdrag + Fakturering)
 - **NY: Skatteavdrag-flik**: Personal tax dashboard med svenska skatteoptimering
+- **NY: Fakturor-flik**: Komplett faktureringslösning med kundhantering och PDF-generering
 - **Smart kvittoscanning**: Enhanced capture som analyserar både företag och privat
 - **Skattenotifier**: Popup som föreslår Smart Capture för potentiella skatteavdrag
+- **Fakturahantering**: Skapa, skicka och följa upp fakturor med svensk design
 - BankID-stubflöde, Kamera/Upload (auto-crop, blänkvarning, batch)
 - Dokumentlista/detalj (OCR-overlay, explainability, öppna verifikation)
 - Dashboard (Trygghetsmätare + flaggor), Verifikationsvy (entries, audit-hash, åtgärder)

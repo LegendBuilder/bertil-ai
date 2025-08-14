@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     email_imap_password: str | None = None
     email_sender_rules_json: str | None = None  # JSON mapping sender->meta (e.g., {"invoices@x.com": {"type":"invoice"}})
 
+    # Email sending (SMTP) for invoices
+    smtp_server: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    from_email: str | None = None
+    smtp_use_tls: bool = True
+
     # Knowledge base (RAG) HTTP fetch toggle
     kb_http_fetch_enabled: bool = False
 

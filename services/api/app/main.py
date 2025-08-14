@@ -5,7 +5,7 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import engine, Base
-from .routers import auth, ingest, verifications, compliance, exports, reports, ai_auto, ai_enhanced, bolagsverket, metrics, admin, storage, bank, vat, imports, einvoice, period, fortnox, review, accruals, email_ingest, personal_tax
+from .routers import auth, ingest, verifications, compliance, exports, reports, ai_auto, ai_enhanced, bolagsverket, metrics, admin, storage, bank, vat, imports, einvoice, period, fortnox, review, accruals, email_ingest, personal_tax, invoices
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -109,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(accruals.router)
     app.include_router(email_ingest.router)
     app.include_router(personal_tax.router)
+    app.include_router(invoices.router)
 
     # Minimal DLP middleware: mask personal numbers in paths/queries
     @app.middleware("http")

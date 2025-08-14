@@ -20,6 +20,9 @@ import '../features/bank/ui/reconcile_page.dart';
 import '../features/inbox/ui/inbox_page.dart';
 import '../features/personal_tax/ui/personal_tax_dashboard.dart';
 import '../features/personal_tax/ui/enhanced_capture_page.dart';
+import '../features/invoices/ui/invoices_page.dart';
+import '../features/invoices/ui/create_invoice_page.dart';
+import '../features/invoices/ui/invoice_detail_page.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
@@ -53,6 +56,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/verifications/create', builder: (context, state) => const CreateVerificationPage()),
           GoRoute(path: '/bank/reconcile', builder: (context, state) => const ReconcilePage()),
           GoRoute(path: '/inbox', builder: (context, state) => const InboxPage()),
+          GoRoute(path: '/invoices', builder: (context, state) => const InvoicesPage()),
+          GoRoute(path: '/invoices/create', builder: (context, state) => const CreateInvoicePage()),
+          GoRoute(
+            path: '/invoices/:id',
+            builder: (context, state) => InvoiceDetailPage(invoiceId: int.parse(state.pathParameters['id']!)),
+          ),
           GoRoute(path: '/personal-tax', builder: (context, state) => const PersonalTaxDashboard()),
           GoRoute(path: '/enhanced-capture', builder: (context, state) => const EnhancedCapturePage()),
           GoRoute(path: '/settings', builder: (context, state) => const SettingsPage()),

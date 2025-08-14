@@ -8,6 +8,7 @@ class AppShell extends StatelessWidget {
   static const _tabs = [
     _TabItem(label: 'Hem', icon: Icons.home_outlined, route: '/'),
     _TabItem(label: 'Fota', icon: Icons.camera_alt_outlined, route: '/capture'),
+    _TabItem(label: 'Fakturor', icon: Icons.receipt_long_outlined, route: '/invoices'),
     _TabItem(label: 'Skatteavdrag', icon: Icons.savings_outlined, route: '/personal-tax'),
     _TabItem(label: 'Dokument', icon: Icons.description_outlined, route: '/documents'),
     _TabItem(label: 'Rapporter', icon: Icons.bar_chart_outlined, route: '/reports'),
@@ -26,7 +27,7 @@ class AppShell extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
+        final isWide = constraints.maxWidth >= 1200; // Increased threshold for 7 tabs
         if (isWide) {
           // Desktop/tablet: NavigationRail on the side
           return FocusTraversalGroup(
